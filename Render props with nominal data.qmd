@@ -1,0 +1,162 @@
+---
+title: "Render props with nominal data"
+author: "Joel Barnes"
+date: "`r Sys.time()`"
+date-format: "MMM D, YYYY @ HH:mm:ss"
+format: 
+  html:
+    page-layout: full
+    toc: true
+    toc-location: left
+    embed-resources: true
+editor: source
+execute:
+  warning: false
+  message: false
+---
+
+## Dependencies
+
+```{r}
+# Import dependencies
+library(dplyr)
+library(ggplot2)
+library(ggtext)
+library(stringr)
+library(tidyr)
+```
+
+## User-defined functions
+
+```{r}
+# This function renders a grouped bar plot of all nominal vectors inputted
+render_props <- function(x) {
+  
+  # This function runs a chi-square goodness of fit test and computes props for a nominal vector
+  get_props <- function(x, label) {
+    
+    # Run Chi-square goodness of fit test
+    test <- chisq.test(
+      x = x %>%
+        table %>% 
+        unname
+    )
+    
+    # Compute props
+    props <- x %>% 
+      table %>%
+      prop.table %>%
+      as_tibble %>%
+      rename(level = ".", prop = n) %>%
+      mutate(
+        item = label,
+        prop = round(prop * 100, 1),
+        stat_sig = ""
+      ) %>%
+      relocate(item, .before = level)
+    
+    # If stat sig
+    if(test$p.value <= 0.05) {
+      
+      # Identify prop with largest residual
+      largest_residual <- which(abs(test$residuals) == max(abs(test$residuals)))
+      
+      # Add asterisk to stat_sig vector row with largest residual
+      props$stat_sig[largest_residual] <- "*"
+      
+    }
+    
+    return(props)
+    
+  }
+  
+  # Wrap vector names if too long
+  names(x) <- str_wrap(
+    string = names(x),
+    width = 10
+  )
+
+  # Pivot all nominal vectors long, then run each vector through the get_props function
+  df <- x %>%
+    pivot_longer(cols = all_of(names(x))) %>%
+    group_by(name) %>%
+    reframe(get_props(value, unique(name))) %>%
+    ungroup() %>%
+    mutate(
+      item = factor(
+        x = item,
+        levels = all_of(names(x))
+      )
+    )
+  
+  # Render bar plot
+  ggplot(
+    data = df,
+    mapping = aes(
+      x = item, 
+      y = prop, 
+      fill = level,
+      label = paste0(format(prop, nsmall = 1), "%", stat_sig)
+    )
+  ) + 
+    geom_bar(stat = "identity", position = "dodge", alpha = 0.7) +
+    geom_text(
+      position = position_dodge(width = 0.9),
+      aes(vjust = -0.5), 
+      size = 3
+    ) +
+    scale_fill_manual(values = c("#9260fc", "#e85e0d", "#ff0169")) +
+    labs(
+      title = "",
+      x = "", 
+      y = "",
+      caption = "&ast; p &le; 0.05 based on a chi-square goodness of fit test"
+    ) +
+    theme_minimal() +
+    theme(
+      legend.position = "bottom",
+      legend.title = element_blank(),
+      plot.caption = element_markdown(hjust = 0)
+    )
+  
+} 
+```
+
+## Fake data
+
+```{r}
+# Create fake data
+df <- tibble(
+  `How are you doing today?` = sample(
+    x = c("Agree", "Disagree", "Neutral"),
+    size = 1000,
+    replace = TRUE,
+    prob = c(0.5, 0.2, 0.3)
+  ),
+  `Oh, I'm doing just dandy!` = sample(
+    x = c("Agree", "Disagree", "Neutral"),
+    size = 1000,
+    replace = TRUE,
+    prob = c(0.3, 0.27, 0.43)
+  ),
+  `Shut the front door!` = sample(
+    x = c("Agree", "Disagree", "Neutral"),
+    size = 1000,
+    replace = TRUE,
+    prob = c(0.32, 0.33, 0.35)
+  )
+)
+```
+
+## Bar plot
+
+```{r}
+render_props(
+  x = df %>% 
+    select(
+      `How are you doing today?`, 
+      `Oh, I'm doing just dandy!`, 
+      `Shut the front door!`
+    )
+)
+```
