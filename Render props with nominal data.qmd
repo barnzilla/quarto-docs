@@ -89,6 +89,29 @@ render_props <- function(x) {
       )
     )
   
+  # Create color palette
+  color_palette <- c(
+    "#405DE6", 
+    "#5B51D8", 
+    "#833AB4",
+    "#C13584",
+    "#E1306C",
+    "#FD1D1D",
+    "#F56040",
+    "#F77737",
+    "#FCAF45",
+    "#FFDC80"
+  )
+  
+  # Select the number of colors needed
+  fill_colors <- color_palette[
+    seq(
+      from = 1, 
+      to = length(color_palette), 
+      by = floor(length(color_palette) / length(levels(df$item)))
+    )[1:length(levels(df$item))]
+  ]
+  
   # Render bar plot
   ggplot(
     data = df,
@@ -105,7 +128,7 @@ render_props <- function(x) {
       aes(vjust = -0.5), 
       size = 3
     ) +
-    scale_fill_manual(values = c("#9260fc", "#e85e0d", "#ff0169")) +
+    scale_fill_manual(values = fill_colors) +
     labs(
       title = "",
       x = "", 
