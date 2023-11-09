@@ -50,6 +50,10 @@ render_props <- function(x) {
       rename(level = ".", prop = n) %>%
       mutate(
         item = label,
+        n = x %>%
+          table %>%
+          unname,
+        error = sqrt((prop * (1 - prop)) / n) * 100,
         prop = round(prop * 100, 1),
         stat_sig = ""
       ) %>%
@@ -73,7 +77,7 @@ render_props <- function(x) {
   # Wrap vector names if too long
   names(x) <- str_wrap(
     string = names(x),
-    width = 10
+    width = 20
   )
 
   # Pivot all nominal vectors long, then run each vector through the get_props function
@@ -122,13 +126,24 @@ render_props <- function(x) {
       label = paste0(format(prop, nsmall = 1), "%", stat_sig)
     )
   ) + 
-    geom_bar(stat = "identity", position = "dodge", alpha = 0.7) +
-    geom_text(
-      position = position_dodge(width = 0.9),
-      aes(vjust = -0.5), 
-      size = 3
+    geom_col(
+      stat = "identity", 
+      width = 0.4, 
+      position = position_dodge(width = 0.5), 
+      alpha = 0.7
     ) +
+    geom_text(
+      position = position_dodge(width = 0.5),
+      aes(vjust = -1.5, y = prop + (error / 1.5)), 
+      size = 2.5
+    ) +
+  geom_errorbar(
+    aes(ymin = prop - error, ymax = prop + error),
+    width = 0.15,
+    position = position_dodge(width = 0.5)
+  ) + 
     scale_fill_manual(values = fill_colors) +
+    scale_y_continuous(limits = c(0, min(100, max(df$prop + 10)))) +
     labs(
       title = "",
       x = "", 
