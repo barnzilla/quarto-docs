@@ -137,11 +137,11 @@ render_props <- function(x) {
       aes(vjust = -1.5, y = prop + (error / 1.5)), 
       size = 2.5
     ) +
-  geom_errorbar(
-    aes(ymin = prop - error, ymax = prop + error),
-    width = 0.15,
-    position = position_dodge(width = 0.6)
-  ) + 
+    geom_errorbar(
+      aes(ymin = prop - error, ymax = prop + error),
+      width = 0.15,
+      position = position_dodge(width = 0.6)
+    ) + 
     scale_fill_manual(values = fill_colors) +
     scale_y_continuous(limits = c(0, min(100, max(df$prop + 10)))) +
     labs(
