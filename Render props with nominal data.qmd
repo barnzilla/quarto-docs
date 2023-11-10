@@ -30,7 +30,22 @@ library(tidyr)
 
 ```{r}
 # This function renders a grouped bar plot of all nominal vectors inputted
-render_props <- function(x) {
+render_props <- function(x, ...) {
+  
+  # Get optional arguments
+  options <- list(...)
+  
+  # Check whether optional arguments are set
+  if(is.numeric(options$plot_title_font_size)) plot_title_font_size <- options$plot_title_font_size else plot_title_font_size <- 10
+  if(length(options$x_axis_label)) x_axis_label <- options$x_axis_label else x_axis_label <- ""
+  if(length(options$y_axis_label)) y_axis_label <- options$y_axis_label else y_axis_label <- ""
+  if(is.numeric(options$axis_text_font_size)) axis_text_font_size <- options$axis_text_font_size else axis_text_font_size <- 10
+  if(is.numeric(options$label_font_size)) label_font_size <- options$label_font_size else label_font_size <- 2.5
+  if(is.numeric(options$error_bar_size)) error_bar_size <- options$error_bar_size else error_bar_size <- 0.15
+  if(isFALSE(options$show_legend)) show_legend <- "none" else show_legend <- "bottom"
+  if(isFALSE(options$show_x_axis)) x_axis_text <- element_blank() else x_axis_text <- element_text(size = axis_text_font_size)
+  if(isFALSE(options$show_y_axis)) y_axis_text <- element_blank() else y_axis_text <- element_text(size = axis_text_font_size)
+  if(is.numeric(options$legend_text_font_size)) legend_text_font_size <- options$legend_text_font_size else legend_text_font_size <- 10
   
   # This function runs a chi-square goodness of fit test and computes props for a nominal vector
   get_props <- function(x, label) {
@@ -168,19 +183,19 @@ render_props <- function(x) {
     geom_text(
       position = position_dodge(width = 0.6),
       aes(vjust = -1.5, y = prop + (error / 1.5)), 
-      size = 2.5
+      size = label_font_size
     ) +
     geom_errorbar(
       aes(ymin = prop - error, ymax = prop + error),
-      width = 0.15,
+      width = error_bar_size,
       position = position_dodge(width = 0.6)
     ) + 
     scale_fill_manual(values = fill_colors) +
     scale_y_continuous(limits = c(0, min(100, max(df$prop + 10)))) +
     labs(
       title = plot_title,
-      x = "", 
-      y = "",
+      x = x_axis_label, 
+      y = y_axis_label,
       caption = if_else(
         condition = "*" %in% df$stat_sig,
         true = "&ast; p &le; 0.05 based on a chi-square goodness of fit test",
@@ -189,8 +204,14 @@ render_props <- function(x) {
     ) +
     theme_minimal() +
     theme(
-      legend.position = "bottom",
+      plot.title = element_text(size = plot_title_font_size, margin = margin(0, 0, plot_title_font_size * 2, 0)),
+      axis.title.x = element_text(margin = margin(0, axis_text_font_size * 2, 0)),
+      axis.title.y = element_text(margin = margin(0, axis_text_font_size * 2, 0)),
+      axis.text.x = x_axis_text,
+      axis.text.y = y_axis_text,
+      legend.position = show_legend,
       legend.title = element_blank(),
+      legend.text = element_text(size = legend_text_font_size),
       plot.caption = element_markdown(hjust = 0)
     )
   
@@ -228,7 +249,14 @@ df <- tibble(
 ```{r}
 render_props(
   x = df %>% 
-    select(`How are you doing today?`)
+    select(`How are you doing today?`),
+  plot_title_font_size = 12,
+  y_axis_label = "Proportion",
+  show_y_axis = FALSE,
+  axis_text_font_size = 9,
+  label_font_size = 3,
+  error_bar_size = 0.03,
+  show_legend = FALSE
 )
 ```
 
