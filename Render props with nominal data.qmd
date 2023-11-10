@@ -107,26 +107,59 @@ render_props <- function(x) {
     "#FFDC80"
   )
   
-  # Select the number of colors needed
-  fill_colors <- color_palette[
-    seq(
-      from = 1, 
-      to = length(color_palette), 
-      by = floor(length(color_palette) / length(levels(df$item)))
-    )[1:length(levels(df$item))]
-  ]
-  
-  # Render bar plot
-  ggplot(
-    data = df,
-    mapping = aes(
+  # Tweak plot based on number of items passed into function
+  if(ncol(x) > 1) {
+    
+    # Select the number of colors needed
+    fill_colors <- color_palette[
+      seq(
+        from = 1, 
+        to = length(color_palette), 
+        by = floor(length(color_palette) / length(levels(df$item)))
+      )[1:length(levels(df$item))]
+    ]
+    
+    # Set mapping content
+    mapping_content <- aes(
       x = item, 
       y = prop, 
       fill = level,
       label = paste0(format(prop, nsmall = 1), "%", stat_sig)
     )
+    
+    # Set plot title
+    plot_title <- ""
+      
+  } else {
+    
+    # Select the number of colors needed
+    fill_colors <- color_palette[
+      seq(
+        from = 1, 
+        to = length(color_palette), 
+        by = floor(length(color_palette) / nrow(df))
+      )[1:nrow(df)]
+    ]
+    
+    # Set mapping content
+    mapping_content <- aes(
+      x = level, 
+      y = prop, 
+      fill = level,
+      label = paste0(format(prop, nsmall = 1), "%", stat_sig)
+    )
+    
+    # Set plot title
+    plot_title <- gsub("\n", " ", df$item[1])
+    
+  }
+  
+  # Render bar plot
+  ggplot(
+    data = df,
+    mapping = mapping_content
   ) + 
-    geom_col(
+    geom_bar(
       stat = "identity", 
       width = 0.5, 
       position = position_dodge(width = 0.6), 
@@ -145,10 +178,14 @@ render_props <- function(x) {
     scale_fill_manual(values = fill_colors) +
     scale_y_continuous(limits = c(0, min(100, max(df$prop + 10)))) +
     labs(
-      title = "",
+      title = plot_title,
       x = "", 
       y = "",
-      caption = "&ast; p &le; 0.05 based on a chi-square goodness of fit test"
+      caption = if_else(
+        condition = "*" %in% df$stat_sig,
+        true = "&ast; p &le; 0.05 based on a chi-square goodness of fit test",
+        false = ""
+      )
     ) +
     theme_minimal() +
     theme(
@@ -186,7 +223,16 @@ df <- tibble(
 )
 ```
 
-## Bar plot
+## Bar plot (single item)
+
+```{r}
+render_props(
+  x = df %>% 
+    select(`How are you doing today?`)
+)
+```
+
+## Bar plot (multiple items)
 
 ```{r}
 render_props(
