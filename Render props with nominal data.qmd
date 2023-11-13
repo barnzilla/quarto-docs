@@ -30,7 +30,7 @@ library(tidyr)
 
 ```{r}
 # This function renders a grouped bar plot of all nominal vectors inputted
-render_props <- function(items, ...) {
+render_props <- function(items, test = "lm", ...) {
   
   # Get optional arguments
   options <- list(...)
@@ -52,6 +52,35 @@ render_props <- function(items, ...) {
   if(is.numeric(options$legend_font_size)) legend_font_size <- options$legend_font_size else legend_font_size <- 10
   if(is.numeric(options$transparency)) transparency <- options$transparency else transparency <- 0.7
   if(is.numeric(options$alpha_level)) alpha_level <- options$alpha_level else alpha_level <- 0.05
+
+  get_means <- function(x, response, predictor, alpha_level = 0.05) {
+
+    x <- tibble(response = x[[response]], predictor = factor(x[[predictor]]))
+
+    df <- tibble()
+
+    for(level in levels(x$predictor)) {
+        model <- lm(response ~ 1, data = x %>% filter(predictor == level))
+        df <- bind_rows(
+            df,
+            tibble(
+                level = level,
+                mean = model$coefficients %>% as.vector,
+                ci_lower = confint(model)[1,1],
+                ci_upper = confint(model)[1,2]
+            )
+        )
+    }
+
+    model <- lm(response ~ 1, data = x %>% filter(predictor == level))
+    p <- summary(model)$coefficients[1,4]
+
+    if(p <= alpha_level) df$stat_sig <- c("*", "") else df$stat_sign <- ""
+
+
+    return(df)
+    
+}
 
   # This function runs a chi-square goodness of fit test and computes props for a nominal vector
   get_props <- function(x, label, alpha_level = 0.05) {
@@ -80,7 +109,8 @@ render_props <- function(items, ...) {
         ci_upper = prop + error,
         stat_sig = ""
       ) %>%
-      relocate(item, .before = level)
+      relocate(item, .before = level) %>%
+      rename(mean = prop)
     
     # If stat sig
     if(test$p.value <= alpha_level) {
@@ -108,17 +138,31 @@ render_props <- function(items, ...) {
   )
 
   # Pivot all nominal vectors long, then run each vector through the get_props function
-  df <- items %>%
-    pivot_longer(cols = all_of(names(items))) %>%
-    group_by(name) %>%
-    dplyr::summarize(get_props(value, unique(name), alpha_level = options$alpha_level), .groups = "keep") %>%
-    ungroup() %>%
-    mutate(
-      item = factor(
-        x = item,
-        levels = all_of(names(items))
+  if(test == "chi-square") {
+    df <- items %>%
+      pivot_longer(cols = all_of(names(items))) %>%
+      group_by(name) %>%
+      dplyr::summarize(get_props(value, unique(name), alpha_level = options$alpha_level), .groups = "keep") %>%
+      ungroup() %>%
+      mutate(
+        item = factor(
+          x = item,
+          levels = all_of(names(items))
+        )
       )
-    )
+  } else if(test == "lm") {
+    df <- items %>%
+      pivot_longer(cols = all_of(names(items))) %>%
+      group_by(name) %>%
+      dplyr::summarize(get_means(name, predictor, alpha_level = options$alpha_level), .groups = "keep") %>%
+      ungroup() %>%
+      mutate(
+        item = factor(
+          x = item,
+          levels = all_of(names(items))
+        )
+      )
+  }
 
   if(is.character(options$item_options)) {
     df <- df %>%
@@ -172,9 +216,9 @@ render_props <- function(items, ...) {
     # Set mapping content
     mapping_content <- aes(
       x = item, 
-      y = prop, 
+      y = mean, 
       fill = level,
-      label = paste0(format(prop, nsmall = 1), "%", stat_sig)
+      label = paste0(format(mean, nsmall = 1), "%", stat_sig)
     )
     
     # Set plot title
@@ -194,9 +238,9 @@ render_props <- function(items, ...) {
     # Set mapping content
     mapping_content <- aes(
       x = level, 
-      y = prop, 
+      y = mean, 
       fill = level,
-      label = paste0(format(prop, nsmall = 1), "%", stat_sig)
+      label = paste0(format(mean, nsmall = 1), "%", stat_sig)
     )
     
     # Set plot title
@@ -223,18 +267,18 @@ render_props <- function(items, ...) {
           true = options$data_label_position * -1, 
           false = -2.5
         ), 
-        y = prop + (error / 1.5)
+        y = ci_upper
       ), 
       size = label_font_size
     ) +
     geom_errorbar(
-      aes(ymin = ci_lower, ymax = ci_upper,
+      aes(ymin = ci_lower, ymax = ci_upper),
       color = "#434343",
       width = error_bar_size,
       position = position_dodge(width = 0.6)
     ) + 
     scale_fill_manual(values = fill_colors) +
-    scale_y_continuous(breaks = seq(from = 0, to = min(100, max(df$prop + 10)), by = 20), limits = c(0, min(100, max(df$prop + 10)))) +
+    scale_y_continuous(breaks = seq(from = 0, to = min(100, max(df$mean + 10)), by = 20), limits = c(0, min(100, max(df$mean + 10)))) +
     labs(
       title = plot_title,
       x = x_axis_label, 
