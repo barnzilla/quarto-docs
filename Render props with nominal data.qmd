@@ -24,6 +24,7 @@ library(ggplot2)
 library(ggtext)
 library(stringr)
 library(tidyr)
+library(viridis)
 ```
 
 ## User-defined functions
@@ -190,23 +191,7 @@ render_barplot <- function(items, test = "lm", ...) {
   if(is.character(options$color_palette)) {
     color_palette <- options$color_palette
   } else {
-    color_palette = c(
-      "#fff06b",
-      "#ffd600",
-      "#fab100",
-      "#ffb35a",
-      "#ff7a00",
-      "#e85e0d",
-      "#ffabe1",
-      "#ff0169",
-      "#d90052",
-      "#f689ff",
-      "#d300c5",
-      "#a6009f",
-      "#b486ff",
-      "#7638fa",
-      "#7117e1"
-    )
+    color_palette = viridis(15)
   }
   
   # Tweak plot based on number of items passed into function
