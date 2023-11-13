@@ -64,7 +64,7 @@ render_barplot <- function(
   # Get optional arguments
   options <- list(...)
   
-  # Check whether optional arguments are set
+  # Check whether optional arguments are set and update arguments based on user selections
   if(is.character(options$item_labels)) names(items) <- options$item_labels
   if(is.numeric(plot_width) & is.numeric(plot_height)) options(repr.plot.width = plot_width, repr.plot.height = plot_height)
   if(isTRUE(show_grid_lines)) show_grid_lines <- element_line() else show_grid_lines <- element_blank()
@@ -74,14 +74,22 @@ render_barplot <- function(
   if(is.vector(options$grouping_variable %>% unlist)) grouping_variable <- options$grouping_variable
   if(is.numeric(data_label_position)) data_label_position <- data_label_position * -1
 
+  # This function fits an lm model and computes means for a numeric vector that is grouped by another vector
   get_means <- function(response, response_label, predictor, alpha_level = 0.05) {
 
+    # Create tibble
     x <- tibble(response = response, predictor = predictor)
 
+    # Create empty tibble
     df <- tibble()
 
+    # Iterate unique predictor values
     for(level in unique(x$predictor)) {
+      
+      # Fit model
       model <- lm(response ~ 1, data = x %>% filter(predictor == level))
+      
+      # Add model stats and CIs
       df <- bind_rows(
         df,
         tibble(
@@ -91,8 +99,10 @@ render_barplot <- function(
             ci_upper = confint(model)[1,2]
         )
       )
+      
     }
     
+    # Add vectors
     df <- df %>%
       mutate(
         item = !! response_label,
@@ -100,11 +110,12 @@ render_barplot <- function(
       ) %>%
       relocate(item, .before = level)
 
+    # Fit model and get p
     model <- lm(response ~ predictor, data = x)
     p <- summary(model)$coefficients[2,4]
-
-    if(p <= alpha_level) df$stat_sig <- c("*", "")
-
+    
+    # If stat sig
+    if(p <= alpha_level) df$stat_sig[1] <- "*"
 
     return(df)
     
