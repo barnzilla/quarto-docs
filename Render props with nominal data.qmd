@@ -29,15 +29,15 @@ library(tidyr)
 ## User-defined functions
 
 ```{r}
-# This function renders a grouped bar plot of all nominal vectors inputted
-render_props <- function(items, test = "lm", ...) {
+# This function renders a bar plot...with many options
+render_barplot <- function(items, test = "lm", ...) {
   
   # Get optional arguments
   options <- list(...)
   
   # Check whether optional arguments are set
   if(is.character(options$item_labels)) names(items) <- options$item_labels
-  if(is.numeric(options$plot_width) & is.numeric(options$plot_height)) options(repr.plot.width = options$plot_width, repr.plot.height = options$plot_height) else options(repr.plot.width = 12, repr.plot.height = 5)
+  if(is.numeric(options$plot_width) & is.numeric(options$plot_height)) options(repr.plot.width = options$plot_width, repr.plot.height = options$plot_height)
   if(is.character(options$plot_font_face)) plot_font_face <- options$plot_font_face else plot_font_face <- "Roboto"
   if(is.numeric(options$plot_title_font_size)) plot_title_font_size <- options$plot_title_font_size else plot_title_font_size <- 10
   if(length(options$x_axis_label)) x_axis_label <- options$x_axis_label else x_axis_label <- ""
@@ -52,30 +52,41 @@ render_props <- function(items, test = "lm", ...) {
   if(is.numeric(options$legend_font_size)) legend_font_size <- options$legend_font_size else legend_font_size <- 10
   if(is.numeric(options$transparency)) transparency <- options$transparency else transparency <- 0.7
   if(is.numeric(options$alpha_level)) alpha_level <- options$alpha_level else alpha_level <- 0.05
+  if(is.numeric(options$label_wrap_size)) label_wrap_size <- options$label_wrap_size else label_wrap_size <- 20
+  if(is.numeric(options$data_label_position)) data_label_position <- options$data_label_position * -1 else data_label_position <- 2.5
+  if(is.numeric(options$decimals)) decimals <- options$decimals else decimals <- 1
+  if(is.vector(options$grouping_variable %>% unlist)) grouping_variable <- options$grouping_variable
 
-  get_means <- function(x, response, predictor, alpha_level = 0.05) {
+  get_means <- function(response, response_label, predictor, alpha_level = 0.05) {
 
-    x <- tibble(response = x[[response]], predictor = factor(x[[predictor]]))
+    x <- tibble(response = response, predictor = predictor)
 
     df <- tibble()
 
-    for(level in levels(x$predictor)) {
-        model <- lm(response ~ 1, data = x %>% filter(predictor == level))
-        df <- bind_rows(
-            df,
-            tibble(
-                level = level,
-                mean = model$coefficients %>% as.vector,
-                ci_lower = confint(model)[1,1],
-                ci_upper = confint(model)[1,2]
-            )
+    for(level in unique(x$predictor)) {
+      model <- lm(response ~ 1, data = x %>% filter(predictor == level))
+      df <- bind_rows(
+        df,
+        tibble(
+            level = level,
+            mean = round(model$coefficients %>% as.vector, decimals),
+            ci_lower = confint(model)[1,1],
+            ci_upper = confint(model)[1,2]
         )
+      )
     }
+    
+    df <- df %>%
+      mutate(
+        item = !! response_label,
+        stat_sig = ""
+      ) %>%
+      relocate(item, .before = level)
 
-    model <- lm(response ~ 1, data = x %>% filter(predictor == level))
-    p <- summary(model)$coefficients[1,4]
+    model <- lm(response ~ predictor, data = x)
+    p <- summary(model)$coefficients[2,4]
 
-    if(p <= alpha_level) df$stat_sig <- c("*", "") else df$stat_sign <- ""
+    if(p <= alpha_level) df$stat_sig <- c("*", "")
 
 
     return(df)
@@ -104,7 +115,7 @@ render_props <- function(items, test = "lm", ...) {
           table %>%
           unname,
         error = sqrt((prop * (1 - prop)) / n) * 100,
-        prop = round(prop * 100, 1),
+        prop = round(prop * 100, decimals),
         ci_lower = prop - error,
         ci_upper = prop + error,
         stat_sig = ""
@@ -130,20 +141,17 @@ render_props <- function(items, test = "lm", ...) {
   # Wrap vector names if too long
   names(items) <- str_wrap(
     string = names(items),
-    width = if_else(
-      condition = is.numeric(options$label_wrap_size),
-      true = options$label_wrap_size,
-      false = 20
-    )
+    width = label_wrap_size
   )
 
   # Pivot all nominal vectors long, then run each vector through the get_props function
   if(test == "chi-square") {
     df <- items %>%
       pivot_longer(cols = all_of(names(items))) %>%
-      group_by(name) %>%
-      dplyr::summarize(get_props(value, unique(name), alpha_level = options$alpha_level), .groups = "keep") %>%
-      ungroup() %>%
+      #group_by(name) %>%
+      #dplyr::summarize(get_props(value, unique(name), alpha_level = alpha_level), .groups = "keep") %>%
+      #ungroup() %>%
+      reframe(get_props(value, unique(name), alpha_level = alpha_level), .by = name) %>%
       mutate(
         item = factor(
           x = item,
@@ -151,11 +159,14 @@ render_props <- function(items, test = "lm", ...) {
         )
       )
   } else if(test == "lm") {
-    df <- items %>%
+    names(grouping_variable) <- "grouping_variable"
+    
+    df <- bind_cols(items, grouping_variable) %>%
       pivot_longer(cols = all_of(names(items))) %>%
-      group_by(name) %>%
-      dplyr::summarize(get_means(name, predictor, alpha_level = options$alpha_level), .groups = "keep") %>%
-      ungroup() %>%
+      #group_by(name) %>%
+      #dplyr::summarize(get_means(value, grouping_variable, alpha_level = alpha_level), .groups = "keep") %>%
+      #ungroup() %>%
+      reframe(get_means(value, unique(name), grouping_variable, alpha_level = alpha_level), .groups = "keep", .by = name) %>%
       mutate(
         item = factor(
           x = item,
@@ -218,7 +229,18 @@ render_props <- function(items, test = "lm", ...) {
       x = item, 
       y = mean, 
       fill = level,
-      label = paste0(format(mean, nsmall = 1), "%", stat_sig)
+      label = paste0(
+        format(
+          x = mean, 
+          nsmall = 1
+        ), 
+        if_else(
+          condition = test == "chi-square",
+          true = "%",
+          false = ""
+        ), 
+        stat_sig
+      )
     )
     
     # Set plot title
@@ -240,7 +262,18 @@ render_props <- function(items, test = "lm", ...) {
       x = level, 
       y = mean, 
       fill = level,
-      label = paste0(format(mean, nsmall = 1), "%", stat_sig)
+      label = paste0(
+        format(
+          x = mean, 
+          nsmall = 1
+        ), 
+        if_else(
+          condition = test == "chi-square",
+          true = "%",
+          false = ""
+        ), 
+        stat_sig
+      )
     )
     
     # Set plot title
@@ -262,11 +295,7 @@ render_props <- function(items, test = "lm", ...) {
     geom_text(
       position = position_dodge(width = 0.6),
       aes(
-        vjust = if_else(
-          condition = is.numeric(options$data_label_position), 
-          true = options$data_label_position * -1, 
-          false = -2.5
-        ), 
+        vjust = data_label_position, 
         y = ci_upper
       ), 
       size = label_font_size
@@ -331,16 +360,37 @@ df <- tibble(
     size = 1000,
     replace = TRUE,
     prob = c(0.32, 0.33, 0.35)
+  ),
+  Sex = sample(
+    x = c("Female", "Male"),
+    size = 1000,
+    replace = TRUE,
+    prob = c(0.51, 0.49)
+  ),
+  `Scale er from 1 to 5, bud` = sample(
+    x = 1:5,
+    size = 1000,
+    replace = TRUE,
+    prob = rep(0.2, 5)
+  ),
+  `Scale er from 1 to 10, kid` = sample(
+    x = 1:10,
+    size = 1000,
+    replace = TRUE,
+    prob = rep(0.1, 10)
   )
 )
 ```
 
-## Bar plot (single item)
+## Props
+
+### Bar plot (single item)
 
 ```{r}
-render_props(
-  x = df %>% 
+render_barplot(
+  items = df %>% 
     select(`How are you doing today?`),
+  test = "chi-square",
   plot_title_font_size = 12,
   y_axis_label = "Proportion",
   show_y_axis = FALSE,
@@ -351,15 +401,42 @@ render_props(
 )
 ```
 
-## Bar plot (multiple items)
+### Bar plot (multiple items)
 
 ```{r}
-render_props(
-  x = df %>% 
+render_barplot(
+  items = df %>% 
     select(
       `How are you doing today?`, 
       `Oh, I'm doing just dandy!`, 
       `Shut the front door!`
-    )
+    ),
+  test = "chi-square",
+  data_label_position = 1.5
+)
+```
+
+## Means
+
+### Bar plot (single item)
+
+```{r}
+render_barplot(
+  items = df %>% 
+    select(
+      `Scale er from 1 to 5, bud`,
+      `Scale er from 1 to 10, kid`
+    ),
+  grouping_variable = df %>%
+    select(Sex),
+  test = "lm",
+  data_label_position = 1.5,
+  decimals = 2,
+  plot_title_font_size = 12,
+  y_axis_label = "Mean",
+  show_y_axis = FALSE,
+  axis_text_font_size = 9,
+  label_font_size = 3,
+  error_bar_size = 0.03
 )
 ```
