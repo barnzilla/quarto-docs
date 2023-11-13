@@ -17,7 +17,7 @@ execute:
 
 ## Dependencies
 
-```{r}
+```{r, `code-line-numbers` = 1}
 # Import dependencies
 library(dplyr)
 library(ggplot2)
@@ -30,36 +30,36 @@ library(viridis)
 
 ## User-defined functions
 
-```{r}
+```{r, `code-line-numbers` = 1}
 # This function renders a bar plot...with many options
 render_barplot <- function(
-    items, 
-    plot_width = NULL,
-    plot_height = NULL,
-    plot_font_face = "Roboto",
-    plot_title = "",
-    plot_title_font_size = 10,
-    legend_position = c("top", "right", "bottom", "left", "none")[3],
-    legend_font_size = 10,
-    bar_transparency = 0.7,
-    color_palette = viridis(15),
-    show_grid_lines = TRUE,
-    show_axis_lines = FALSE,
-    show_x_axis = FALSE,
-    show_y_axis = FALSE,
-    x_axis_label = "",
-    y_axis_label = "",
-    y_axis_breaks = 5,
-    axis_text_font_size = 10,
-    label_font_size = 2.5,
-    label_wrap_size = 20,
-    label_color = "#434343",
-    error_bar_size = 0.05,
-    data_label_position = 2.5,
-    decimals = 1,
-    test = c("chi-square", "lm")[2], 
-    alpha_level = 0.05,
-    ...
+  items, 
+  plot_width = NULL,
+  plot_height = NULL,
+  plot_font_face = "Roboto",
+  plot_title = "",
+  plot_title_font_size = 10,
+  legend_position = c("top", "right", "bottom", "left", "none")[3],
+  legend_font_size = 10,
+  bar_transparency = 0.7,
+  color_palette = viridis(15),
+  show_grid_lines = TRUE,
+  show_axis_lines = FALSE,
+  show_x_axis = FALSE,
+  show_y_axis = FALSE,
+  x_axis_label = "",
+  y_axis_label = "",
+  y_axis_breaks = 5,
+  axis_text_font_size = 10,
+  label_font_size = 2.5,
+  label_wrap_size = 20,
+  label_color = "#434343",
+  error_bar_size = 0.05,
+  data_label_position = 2.5,
+  decimals = 1,
+  test = c("chi-square", "lm")[2], 
+  alpha_level = 0.05,
+  ...
 ) {
   
   # Get optional arguments
@@ -366,7 +366,7 @@ render_barplot <- function(
 
 ## Fake data
 
-```{r}
+```{r, `code-line-numbers` = 1}
 # Create fake data
 df <- tibble(
   `How are you doing today?` = sample(
@@ -412,7 +412,7 @@ df <- tibble(
 
 ### Bar plot (single item)
 
-```{r}
+```{r, `code-line-numbers` = 1}
 render_barplot(
   items = df %>% 
     select(`How are you doing today?`),
@@ -446,7 +446,7 @@ render_barplot(
 
 ### Bar plot (multiple items)
 
-```{r}
+```{r, `code-line-numbers` = 1}
 render_barplot(
   items = df %>% 
     select(
@@ -485,7 +485,7 @@ render_barplot(
 
 ### Bar plot (single item)
 
-```{r}
+```{r, `code-line-numbers` = 1}
 render_barplot(
   items = df %>% 
     select(
@@ -528,9 +528,9 @@ render_barplot(
 
 ## Grid plots
 
-```{r}
-# render plot and bind to object
-p1 <- render_barplot(
+```{r, `code-line-numbers` = 1}
+# Render plot and bind to object
+plot1 <- render_barplot(
   items = df %>% 
     select(
       `Scale er from 1 to 5, bud`,
@@ -571,8 +571,8 @@ p1 <- render_barplot(
 
 # Arrange plots in grid
 ggarrange(
-  p1, 
-  p1,
+  plot1, 
+  plot1,
   labels = c("Plot 1", "Plot 2"),
   ncol = 1,
   legend = "bottom",
