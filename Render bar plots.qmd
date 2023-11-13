@@ -1,5 +1,5 @@
 ---
-title: "Render props with nominal data"
+title: "Render bar plots"
 author: "Joel Barnes"
 date: "`r Sys.time()`"
 date-format: "MMM D, YYYY @ HH:mm:ss"
@@ -31,32 +31,48 @@ library(viridis)
 
 ```{r}
 # This function renders a bar plot...with many options
-render_barplot <- function(items, test = "lm", ...) {
+render_barplot <- function(
+    items, 
+    plot_width = NULL,
+    plot_height = NULL,
+    plot_font_face = "Roboto",
+    plot_title = "",
+    plot_title_font_size = 10,
+    legend_position = c("top", "right", "bottom", "left", "none")[3],
+    legend_font_size = 10,
+    bar_transparency = 0.7,
+    color_palette = viridis(15),
+    show_grid_lines = TRUE,
+    show_axis_lines = FALSE,
+    show_x_axis = FALSE,
+    show_y_axis = FALSE,
+    x_axis_label = "",
+    y_axis_label = "",
+    y_axis_breaks = 5,
+    axis_text_font_size = 10,
+    label_font_size = 2.5,
+    label_wrap_size = 20,
+    label_color = "#434343",
+    error_bar_size = 0.05,
+    data_label_position = 2.5,
+    decimals = 1,
+    test = c("chi-square", "lm")[2], 
+    alpha_level = 0.05,
+    ...
+) {
   
   # Get optional arguments
   options <- list(...)
   
   # Check whether optional arguments are set
   if(is.character(options$item_labels)) names(items) <- options$item_labels
-  if(is.numeric(options$plot_width) & is.numeric(options$plot_height)) options(repr.plot.width = options$plot_width, repr.plot.height = options$plot_height)
-  if(is.character(options$plot_font_face)) plot_font_face <- options$plot_font_face else plot_font_face <- "Roboto"
-  if(is.numeric(options$plot_title_font_size)) plot_title_font_size <- options$plot_title_font_size else plot_title_font_size <- 10
-  if(length(options$x_axis_label)) x_axis_label <- options$x_axis_label else x_axis_label <- ""
-  if(length(options$y_axis_label)) y_axis_label <- options$y_axis_label else y_axis_label <- ""
-  if(is.numeric(options$axis_text_font_size)) axis_text_font_size <- options$axis_text_font_size else axis_text_font_size <- 10
-  if(is.numeric(options$label_font_size)) label_font_size <- options$label_font_size else label_font_size <- 2.5
-  if(is.character(options$label_color)) label_color <- options$label_color else label_color <- "#434343"
-  if(is.numeric(options$error_bar_size)) error_bar_size <- options$error_bar_size else error_bar_size <- 0.15
-  if(isFALSE(options$show_legend)) show_legend <- "none" else show_legend <- "bottom"
-  if(isFALSE(options$show_x_axis)) x_axis_text <- element_blank() else x_axis_text <- element_text(color = label_color, size = axis_text_font_size)
-  if(isFALSE(options$show_y_axis)) y_axis_text <- element_blank() else y_axis_text <- element_text(color = label_color, size = axis_text_font_size)
-  if(is.numeric(options$legend_font_size)) legend_font_size <- options$legend_font_size else legend_font_size <- 10
-  if(is.numeric(options$transparency)) transparency <- options$transparency else transparency <- 0.7
-  if(is.numeric(options$alpha_level)) alpha_level <- options$alpha_level else alpha_level <- 0.05
-  if(is.numeric(options$label_wrap_size)) label_wrap_size <- options$label_wrap_size else label_wrap_size <- 20
-  if(is.numeric(options$data_label_position)) data_label_position <- options$data_label_position * -1 else data_label_position <- 2.5
-  if(is.numeric(options$decimals)) decimals <- options$decimals else decimals <- 1
+  if(is.numeric(plot_width) & is.numeric(plot_height)) options(repr.plot.width = plot_width, repr.plot.height = plot_height)
+  if(isTRUE(show_grid_lines)) show_grid_lines <- element_line() else show_grid_lines <- element_blank()
+  if(isTRUE(show_axis_lines)) show_axis_lines <- element_line(color = "#efefef") else show_axis_lines <- element_blank()
+  if(isFALSE(show_x_axis)) x_axis_text <- element_blank() else x_axis_text <- element_text(color = label_color, size = axis_text_font_size)
+  if(isFALSE(show_y_axis)) y_axis_text <- element_blank() else y_axis_text <- element_text(color = label_color, size = axis_text_font_size)
   if(is.vector(options$grouping_variable %>% unlist)) grouping_variable <- options$grouping_variable
+  if(is.numeric(data_label_position)) data_label_position <- data_label_position * -1
 
   get_means <- function(response, response_label, predictor, alpha_level = 0.05) {
 
@@ -187,13 +203,6 @@ render_barplot <- function(items, test = "lm", ...) {
       )
   }
   
-  # Create color palette
-  if(is.character(options$color_palette)) {
-    color_palette <- options$color_palette
-  } else {
-    color_palette = viridis(15)
-  }
-  
   # Tweak plot based on number of items passed into function
   if(ncol(items) > 1) {
 
@@ -217,7 +226,7 @@ render_barplot <- function(items, test = "lm", ...) {
       label = paste0(
         format(
           x = mean, 
-          nsmall = 1
+          nsmall = decimals
         ), 
         if_else(
           condition = test == "chi-square",
@@ -227,9 +236,6 @@ render_barplot <- function(items, test = "lm", ...) {
         stat_sig
       )
     )
-    
-    # Set plot title
-    plot_title <- ""
       
   } else {
     
@@ -250,7 +256,7 @@ render_barplot <- function(items, test = "lm", ...) {
       label = paste0(
         format(
           x = mean, 
-          nsmall = 1
+          nsmall = decimals
         ), 
         if_else(
           condition = test == "chi-square",
@@ -275,7 +281,7 @@ render_barplot <- function(items, test = "lm", ...) {
       stat = "identity", 
       width = 0.5, 
       position = position_dodge(width = 0.6), 
-      alpha = transparency
+      alpha = bar_transparency
     ) +
     geom_text(
       position = position_dodge(width = 0.6),
@@ -292,7 +298,7 @@ render_barplot <- function(items, test = "lm", ...) {
       position = position_dodge(width = 0.6)
     ) + 
     scale_fill_manual(values = fill_colors) +
-    scale_y_continuous(breaks = seq(from = 0, to = min(100, max(df$mean + 10)), by = 20), limits = c(0, min(100, max(df$mean + 10)))) +
+    scale_y_continuous(breaks = seq(from = 0, to = min(100, max(df$mean + 10)), by = y_axis_breaks), limits = c(0, min(100, max(df$mean + 10)))) +
     labs(
       title = plot_title,
       x = x_axis_label, 
@@ -311,13 +317,13 @@ render_barplot <- function(items, test = "lm", ...) {
       axis.title.y = element_text(size = axis_text_font_size, color = label_color, margin = margin(0, axis_text_font_size * 0.75, 0)),
       axis.text.x = x_axis_text,
       axis.text.y = y_axis_text,
-      legend.position = show_legend,
+      legend.position = legend_position,
       legend.title = element_blank(),
       legend.text = element_text(size = legend_font_size, color = label_color),
       plot.caption = element_markdown(size = label_font_size + 6, color = label_color, hjust = 0),
-      panel.grid.major = element_blank(),
-      panel.grid.minor = element_blank(),
-      axis.line = element_line(color = "#efefef")
+      panel.grid.major = show_grid_lines,
+      panel.grid.minor = show_grid_lines,
+      axis.line = show_axis_lines
     )
   
 } 
@@ -375,14 +381,31 @@ df <- tibble(
 render_barplot(
   items = df %>% 
     select(`How are you doing today?`),
-  test = "chi-square",
-  plot_title_font_size = 12,
-  y_axis_label = "Proportion",
+  plot_width = NULL,
+  plot_height = NULL,
+  plot_font_face = "Arial",
+  plot_title = "",
+  plot_title_font_size = 10,
+  legend_position = "bottom",
+  legend_font_size = 10,
+  bar_transparency = 0.7,
+  color_palette = c("#f8766d", "#00ba38", "#619cff"),
+  show_grid_lines = FALSE,
+  show_axis_lines = TRUE,
+  show_x_axis = FALSE,
   show_y_axis = FALSE,
-  axis_text_font_size = 9,
-  label_font_size = 3,
-  error_bar_size = 0.03,
-  show_legend = FALSE
+  x_axis_label = "",
+  y_axis_label = "",
+  y_axis_breaks = 5,
+  axis_text_font_size = 10,
+  label_font_size = 2.5,
+  label_wrap_size = 20,
+  label_color = "#434343",
+  error_bar_size = 0.05,
+  data_label_position = 2.5,
+  decimals = 1,
+  test = "chi-square", 
+  alpha_level = 0.05
 )
 ```
 
@@ -396,8 +419,30 @@ render_barplot(
       `Oh, I'm doing just dandy!`, 
       `Shut the front door!`
     ),
-  test = "chi-square",
-  data_label_position = 1.5
+  plot_width = NULL,
+  plot_height = NULL,
+  plot_font_face = "Arial",
+  plot_title = "",
+  plot_title_font_size = 10,
+  legend_position = "bottom",
+  legend_font_size = 10,
+  bar_transparency = 1,
+  show_grid_lines = TRUE,
+  show_axis_lines = FALSE,
+  show_x_axis = FALSE,
+  show_y_axis = TRUE,
+  x_axis_label = "",
+  y_axis_label = "Proportion of respondents (%)",
+  y_axis_breaks = 20,
+  axis_text_font_size = 10,
+  label_font_size = 2.5,
+  label_wrap_size = 20,
+  label_color = "#434343",
+  error_bar_size = 0.05,
+  data_label_position = 1,
+  decimals = 1,
+  test = "chi-square", 
+  alpha_level = 0.05
 )
 ```
 
@@ -414,14 +459,30 @@ render_barplot(
     ),
   grouping_variable = df %>%
     select(Sex),
-  test = "lm",
-  data_label_position = 1.5,
-  decimals = 2,
-  plot_title_font_size = 12,
+  plot_width = NULL,
+  plot_height = NULL,
+  plot_font_face = "Arial",
+  plot_title = "",
+  plot_title_font_size = 10,
+  legend_position = "bottom",
+  legend_font_size = 10,
+  bar_transparency = 0.7,
+  color_palette = c("#f8766d", "#00ba38", "#619cff"),
+  show_grid_lines = TRUE,
+  show_axis_lines = FALSE,
+  show_x_axis = FALSE,
+  show_y_axis = TRUE,
+  x_axis_label = "",
   y_axis_label = "Mean",
-  show_y_axis = FALSE,
-  axis_text_font_size = 9,
-  label_font_size = 3,
-  error_bar_size = 0.03
+  y_axis_breaks = 5,
+  axis_text_font_size = 10,
+  label_font_size = 2.5,
+  label_wrap_size = 20,
+  label_color = "#434343",
+  error_bar_size = 0.05,
+  data_label_position = 1,
+  decimals = 1,
+  test = "lm", 
+  alpha_level = 0.05
 )
 ```
