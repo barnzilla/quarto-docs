@@ -30,25 +30,31 @@ library(tidyr)
 
 ```{r}
 # This function renders a grouped bar plot of all nominal vectors inputted
-render_props <- function(x, ...) {
+render_props <- function(items, ...) {
   
   # Get optional arguments
   options <- list(...)
   
   # Check whether optional arguments are set
+  if(is.character(options$item_labels)) names(items) <- options$item_labels
+  if(is.numeric(options$plot_width) & is.numeric(options$plot_height)) options(repr.plot.width = options$plot_width, repr.plot.height = options$plot_height) else options(repr.plot.width = 12, repr.plot.height = 5)
+  if(is.character(options$plot_font_face)) plot_font_face <- options$plot_font_face else plot_font_face <- "Roboto"
   if(is.numeric(options$plot_title_font_size)) plot_title_font_size <- options$plot_title_font_size else plot_title_font_size <- 10
   if(length(options$x_axis_label)) x_axis_label <- options$x_axis_label else x_axis_label <- ""
   if(length(options$y_axis_label)) y_axis_label <- options$y_axis_label else y_axis_label <- ""
   if(is.numeric(options$axis_text_font_size)) axis_text_font_size <- options$axis_text_font_size else axis_text_font_size <- 10
   if(is.numeric(options$label_font_size)) label_font_size <- options$label_font_size else label_font_size <- 2.5
+  if(is.character(options$label_color)) label_color <- options$label_color else label_color <- "#434343"
   if(is.numeric(options$error_bar_size)) error_bar_size <- options$error_bar_size else error_bar_size <- 0.15
   if(isFALSE(options$show_legend)) show_legend <- "none" else show_legend <- "bottom"
-  if(isFALSE(options$show_x_axis)) x_axis_text <- element_blank() else x_axis_text <- element_text(size = axis_text_font_size)
-  if(isFALSE(options$show_y_axis)) y_axis_text <- element_blank() else y_axis_text <- element_text(size = axis_text_font_size)
-  if(is.numeric(options$legend_text_font_size)) legend_text_font_size <- options$legend_text_font_size else legend_text_font_size <- 10
-  
+  if(isFALSE(options$show_x_axis)) x_axis_text <- element_blank() else x_axis_text <- element_text(color = label_color, size = axis_text_font_size)
+  if(isFALSE(options$show_y_axis)) y_axis_text <- element_blank() else y_axis_text <- element_text(color = label_color, size = axis_text_font_size)
+  if(is.numeric(options$legend_font_size)) legend_font_size <- options$legend_font_size else legend_font_size <- 10
+  if(is.numeric(options$transparency)) transparency <- options$transparency else transparency <- 0.7
+  if(is.numeric(options$alpha_level)) alpha_level <- options$alpha_level else alpha_level <- 0.05
+
   # This function runs a chi-square goodness of fit test and computes props for a nominal vector
-  get_props <- function(x, label) {
+  get_props <- function(x, label, alpha_level = 0.05) {
     
     # Run Chi-square goodness of fit test
     test <- chisq.test(
@@ -70,12 +76,14 @@ render_props <- function(x, ...) {
           unname,
         error = sqrt((prop * (1 - prop)) / n) * 100,
         prop = round(prop * 100, 1),
+        ci_lower = prop - error,
+        ci_upper = prop + error,
         stat_sig = ""
       ) %>%
       relocate(item, .before = level)
     
     # If stat sig
-    if(test$p.value <= 0.05) {
+    if(test$p.value <= alpha_level) {
       
       # Identify prop with largest residual
       largest_residual <- which(abs(test$residuals) == max(abs(test$residuals)))
@@ -88,50 +96,77 @@ render_props <- function(x, ...) {
     return(props)
     
   }
-  
+
   # Wrap vector names if too long
-  names(x) <- str_wrap(
-    string = names(x),
-    width = 20
+  names(items) <- str_wrap(
+    string = names(items),
+    width = if_else(
+      condition = is.numeric(options$label_wrap_size),
+      true = options$label_wrap_size,
+      false = 20
+    )
   )
 
   # Pivot all nominal vectors long, then run each vector through the get_props function
-  df <- x %>%
-    pivot_longer(cols = all_of(names(x))) %>%
+  df <- items %>%
+    pivot_longer(cols = all_of(names(items))) %>%
     group_by(name) %>%
-    reframe(get_props(value, unique(name))) %>%
+    dplyr::summarize(get_props(value, unique(name), alpha_level = options$alpha_level), .groups = "keep") %>%
     ungroup() %>%
     mutate(
       item = factor(
         x = item,
-        levels = all_of(names(x))
+        levels = all_of(names(items))
       )
     )
+
+  if(is.character(options$item_options)) {
+    df <- df %>%
+      mutate(
+        level = factor(
+          x = level,
+          levels = names(options$item_options),
+          labels = options$item_options
+        )
+      )
+  }
   
   # Create color palette
-  color_palette <- c(
-    "#405DE6", 
-    "#5B51D8", 
-    "#833AB4",
-    "#C13584",
-    "#E1306C",
-    "#FD1D1D",
-    "#F56040",
-    "#F77737",
-    "#FCAF45",
-    "#FFDC80"
-  )
+  if(is.character(options$color_palette)) {
+    color_palette <- options$color_palette
+  } else {
+    color_palette = c(
+      "#fff06b",
+      "#ffd600",
+      "#fab100",
+      "#ffb35a",
+      "#ff7a00",
+      "#e85e0d",
+      "#ffabe1",
+      "#ff0169",
+      "#d90052",
+      "#f689ff",
+      "#d300c5",
+      "#a6009f",
+      "#b486ff",
+      "#7638fa",
+      "#7117e1"
+    )
+  }
   
   # Tweak plot based on number of items passed into function
-  if(ncol(x) > 1) {
+  if(ncol(items) > 1) {
+
+    # Compute unique levels in df
+    unique_levels <- length(unique(df$level))
     
     # Select the number of colors needed
     fill_colors <- color_palette[
       seq(
         from = 1, 
         to = length(color_palette), 
-        by = floor(length(color_palette) / length(levels(df$item)))
-      )[1:length(levels(df$item))]
+        by = floor(length(color_palette) / unique_levels)
+      )[1:unique_levels]
     ]
     
     # Set mapping content
@@ -178,41 +213,53 @@ render_props <- function(x, ...) {
       stat = "identity", 
       width = 0.5, 
       position = position_dodge(width = 0.6), 
-      alpha = 0.7
+      alpha = transparency
     ) +
     geom_text(
       position = position_dodge(width = 0.6),
-      aes(vjust = -1.5, y = prop + (error / 1.5)), 
+      aes(
+        vjust = if_else(
+          condition = is.numeric(options$data_label_position), 
+          true = options$data_label_position * -1, 
+          false = -2.5
+        ), 
+        y = prop + (error / 1.5)
+      ), 
       size = label_font_size
     ) +
     geom_errorbar(
-      aes(ymin = prop - error, ymax = prop + error),
+      aes(ymin = ci_lower, ymax = ci_upper,
+      color = "#434343",
       width = error_bar_size,
       position = position_dodge(width = 0.6)
     ) + 
     scale_fill_manual(values = fill_colors) +
-    scale_y_continuous(limits = c(0, min(100, max(df$prop + 10)))) +
+    scale_y_continuous(breaks = seq(from = 0, to = min(100, max(df$prop + 10)), by = 20), limits = c(0, min(100, max(df$prop + 10)))) +
     labs(
       title = plot_title,
       x = x_axis_label, 
       y = y_axis_label,
       caption = if_else(
         condition = "*" %in% df$stat_sig,
-        true = "&ast; p &le; 0.05 based on a chi-square goodness of fit test",
+        true = paste0("&#42; p &le; ", format(round(alpha_level, 2), nsmall = 2), options$caption_title),
         false = ""
       )
     ) +
     theme_minimal() +
     theme(
+      text = element_text(family = options$plot_font_face),
       plot.title = element_text(size = plot_title_font_size, margin = margin(0, 0, plot_title_font_size * 2, 0)),
-      axis.title.x = element_text(margin = margin(0, axis_text_font_size * 2, 0)),
-      axis.title.y = element_text(margin = margin(0, axis_text_font_size * 2, 0)),
+      axis.title.x = element_text(color = label_color, margin = margin(0, axis_text_font_size * 1.25, 0)),
+      axis.title.y = element_text(size = axis_text_font_size, color = label_color, margin = margin(0, axis_text_font_size * 0.75, 0)),
       axis.text.x = x_axis_text,
       axis.text.y = y_axis_text,
       legend.position = show_legend,
       legend.title = element_blank(),
-      legend.text = element_text(size = legend_text_font_size),
-      plot.caption = element_markdown(hjust = 0)
+      legend.text = element_text(size = legend_font_size, color = label_color),
+      plot.caption = element_markdown(size = label_font_size + 6, color = label_color, hjust = 0),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      axis.line = element_line(color = "#efefef")
     )
   
 } 
