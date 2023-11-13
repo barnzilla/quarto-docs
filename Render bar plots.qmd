@@ -21,6 +21,7 @@ execute:
 # Import dependencies
 library(dplyr)
 library(ggplot2)
+library(ggpubr)
 library(ggtext)
 library(stringr)
 library(tidyr)
@@ -522,5 +523,59 @@ render_barplot(
   decimals = 1,
   test = "lm", 
   alpha_level = 0.05
+)
+```
+
+## Grid plots
+
+```{r}
+# render plot and bind to object
+p1 <- render_barplot(
+  items = df %>% 
+    select(
+      `Scale er from 1 to 5, bud`,
+      `Scale er from 1 to 10, kid`
+    ),
+  grouping_variable = df %>%
+    select(Sex),
+  grouping_variable_options = c(
+    "1" = "Female",
+    "2" = "Male"
+  ),
+  plot_width = NULL,
+  plot_height = NULL,
+  plot_font_face = "Arial",
+  plot_title = "",
+  plot_title_font_size = 10,
+  legend_position = "bottom",
+  legend_font_size = 10,
+  bar_transparency = 0.7,
+  color_palette = c("#f8766d", "#00ba38", "#619cff"),
+  show_grid_lines = TRUE,
+  show_axis_lines = FALSE,
+  show_x_axis = TRUE,
+  show_y_axis = TRUE,
+  x_axis_label = "",
+  y_axis_label = "Mean",
+  y_axis_breaks = 5,
+  axis_text_font_size = 10,
+  label_font_size = 2.5,
+  label_wrap_size = 20,
+  label_color = "#434343",
+  error_bar_size = 0.05,
+  data_label_position = 1,
+  decimals = 1,
+  test = "lm", 
+  alpha_level = 0.05
+)
+
+# Arrange plots in grid
+ggarrange(
+  p1, 
+  p1,
+  labels = c("Plot 1", "Plot 2"),
+  ncol = 1,
+  legend = "bottom",
+  common.legend = TRUE
 )
 ```
