@@ -20,6 +20,7 @@ execute:
 ```{r, `code-line-numbers` = 1}
 # Import dependencies
 library(dplyr)
+library(effectsize)
 library(ggplot2)
 library(ggpubr)
 library(ggtext)
@@ -59,6 +60,7 @@ render_barplot <- function(
   decimals = 1,
   test = c("chi-square", "lm")[2], 
   alpha_level = 0.05,
+  effect_size_threshold = 0.1,
   ...
 ) {
   
@@ -76,7 +78,7 @@ render_barplot <- function(
   if(is.numeric(data_label_position)) data_label_position <- data_label_position * -1
 
   # This function fits an lm model and computes means for a numeric vector that is grouped by another vector
-  get_means <- function(response, response_label, predictor, alpha_level = 0.05) {
+  get_means <- function(response, response_label, predictor, alpha_level = 0.05, effect_size_threshold = 0.1) {
 
     # Create tibble
     x <- tibble(response = response, predictor = predictor)
@@ -116,8 +118,11 @@ render_barplot <- function(
     model <- lm(response ~ predictor, data = x)
     p <- summary(model)$coefficients[2,4]
     
+    # Compute effect size
+    effect_size <- cohens_d(response ~ predictor, data = x)$Cohens_d %>% abs
+    
     # If stat sig
-    if(p <= alpha_level) df$stat_sig[1] <- "*"
+    if(p <= alpha_level & effect_size >= effect_size_threshold) df$stat_sig[1] <- "*"
 
     return(df)
     
@@ -177,7 +182,7 @@ render_barplot <- function(
   # Pivot all nominal vectors long, then run each vector through the get_props function
   if(test == "chi-square") {
     df <- items %>%
-      pivot_longer(cols = all_of(names(items))) %>%
+      pivot_longer(cols = names(items)) %>%
       #group_by(name) %>%
       #dplyr::summarize(get_props(value, unique(name), alpha_level = alpha_level), .groups = "keep") %>%
       #ungroup() %>%
@@ -185,22 +190,22 @@ render_barplot <- function(
       mutate(
         item = factor(
           x = item,
-          levels = all_of(names(items))
+          levels = names(items)
         )
       )
   } else if(test == "lm") {
     names(grouping_variable) <- "grouping_variable"
     
     df <- bind_cols(items, grouping_variable) %>%
-      pivot_longer(cols = all_of(names(items))) %>%
+      pivot_longer(cols = names(items)) %>%
       #group_by(name) %>%
       #dplyr::summarize(get_means(value, grouping_variable, alpha_level = alpha_level), .groups = "keep") %>%
       #ungroup() %>%
-      reframe(get_means(value, unique(name), grouping_variable, alpha_level = alpha_level), .groups = "keep", .by = name) %>%
+      reframe(get_means(value, unique(name), grouping_variable, alpha_level = alpha_level, effect_size_threshold = effect_size_threshold), .by = name) %>%
       mutate(
         item = factor(
           x = item,
-          levels = all_of(names(items))
+          levels = names(items)
         )
       )
   }
@@ -339,7 +344,16 @@ render_barplot <- function(
       y = y_axis_label,
       caption = if_else(
         condition = "*" %in% df$stat_sig,
-        true = paste0("&#42; p &le; ", format(round(alpha_level, 2), nsmall = 2), options$caption_title),
+        true = paste0(
+          "&#42; <i>p</i> &le; ", 
+          if_else(
+            condition = test == "lm",
+            true = paste0(" and Cohen's <i>d</i> &#8805; ", effect_size_threshold),
+            false = ""
+          ),
+          format(round(alpha_level, 2), nsmall = 2), 
+          options$caption_title
+        ),
         false = ""
       )
     ) +
@@ -404,7 +418,22 @@ df <- tibble(
     size = 1000,
     replace = TRUE,
     prob = rep(0.1, 10)
-  )
+  ),
+  `Continuous 1` = rnorm(
+    n = 1000,
+    mean = 7.1,
+    sd = 1.5
+  ) %>% floor,
+  `Continuous 2` = rnorm(
+    n = 1000,
+    mean = 5.5,
+    sd = 1.2
+  ) %>% floor,
+  `Continuous 3` = rnorm(
+    n = 1000,
+    mean = 6,
+    sd = 1.9
+  ) %>% floor
 )
 ```
 
