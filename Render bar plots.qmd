@@ -58,7 +58,7 @@ render_barplot <- function(
   error_bar_size = 0.05,
   data_label_position = 2.5,
   decimals = 1,
-  test = c("chi-square", "lm")[2], 
+  test = c("anova", "chi-square", "lm")[3], 
   alpha_level = 0.05,
   effect_size_threshold = 0.1,
   ...
@@ -76,6 +76,108 @@ render_barplot <- function(
   if(isFALSE(show_y_axis)) y_axis_text <- element_blank() else y_axis_text <- element_text(color = label_color, size = axis_text_font_size)
   if(is.vector(options$grouping_variable %>% unlist)) grouping_variable <- options$grouping_variable
   if(is.numeric(data_label_position)) data_label_position <- data_label_position * -1
+  
+  get_anova <- function(x, alpha_level = 0.05, effect_size_threshold = 0.1) {
+      
+    # Reshape data
+    x <- x %>%
+      pivot_longer(cols = names(.))
+    
+    # Create empty tibble
+    df <- tibble()
+
+    # Iterate unique predictor values
+    for(level in unique(x$name)) {
+      
+      # Fit model
+      model <- lm(value ~ 1, data = x %>% filter(name == level))
+      
+      # Add model stats and CIs
+      df <- bind_rows(
+        df,
+        tibble(
+            level = level,
+            mean = round(model$coefficients %>% as.vector, decimals),
+            sd = sd(x$value[x$name == level]),
+            ci_lower = confint(model)[1,1],
+            ci_upper = confint(model)[1,2]
+        )
+      ) %>%
+        mutate(
+          letter = letters[1:length(level)],
+          stat_sig = ""
+        ) %>%
+        relocate(letter, .after = level)
+      
+    }
+    
+    # Fit model
+    model <- lm(value ~ name, data = x)
+    
+    # Run ANOVA/post-hoc tests
+    anova <- TukeyHSD(
+      x = aov(model),
+      ordered = TRUE
+    )
+    
+    # Reshape anova to data frame
+    anova <- bind_cols(
+      test = row.names(anova$name),
+      anova$name
+    ) %>%
+      rowwise() %>%
+      mutate(
+        variable1 = strsplit(test, "-")[[1]][1],
+        variable2 = strsplit(test, "-")[[1]][2]
+      )
+    
+    # Get post-hoc test combinations
+    post_hoc_tests <- combn(
+      x = df$level,
+      m = 2
+    ) %>% 
+      t %>%
+      as_tibble %>%
+      rename(variable1 = V1, variable2 = V2) %>%
+      mutate(
+        combo1 = paste0(variable1, "-", variable2),
+        combo2 = paste0(variable2, "-", variable1)
+      )
+    
+    # Iterate post-hoc tests
+    for(i in 1:nrow(post_hoc_tests)) {
+      
+      # Find corresponding row in anova
+      row <- which(post_hoc_tests$combo1[i] == anova$test | post_hoc_tests$combo2[i] == anova$test)
+      
+      # Check if stat sig
+      if(anova$`p adj`[row] <= alpha_level) {
+        
+        df$stat_sig[df$level == post_hoc_tests$variable1[i]] <- paste0(
+          c(
+            strsplit(df$stat_sig[df$level == post_hoc_tests$variable1[i]], ",")[[1]],
+            df$letter[df$level == post_hoc_tests$variable2[i]]
+          ), 
+          collapse = ","
+        )
+        
+        df$stat_sig[df$level == post_hoc_tests$variable2[i]] <- paste0(
+          c(
+            strsplit(df$stat_sig[df$level == post_hoc_tests$variable2[i]], ",")[[1]],
+            df$letter[df$level == post_hoc_tests$variable1[i]]
+          ), 
+          collapse = ","
+        )
+        
+      }
+      
+    }
+    
+    df <- df %>% mutate(stat_sig = paste0(" ", stat_sig))
+    
+    return(df)
+    
+  }
 
   # This function fits an lm model and computes means for a numeric vector that is grouped by another vector
   get_means <- function(response, response_label, predictor, alpha_level = 0.05, effect_size_threshold = 0.1) {
@@ -98,7 +200,7 @@ render_barplot <- function(
         tibble(
             level = level,
             mean = round(model$coefficients %>% as.vector, decimals),
-            sd = sd(response),
+            sd = sd(x$response[x$predictor == level]),
             ci_lower = confint(model)[1,1],
             ci_upper = confint(model)[1,2]
         )
@@ -179,8 +281,13 @@ render_barplot <- function(
     width = label_wrap_size
   )
 
-  # Pivot all nominal vectors long, then run each vector through the get_props function
-  if(test == "chi-square") {
+  # Execute user-defined test
+  if(test == "anova") {
+    
+    df <- get_anova(x = items, alpha_level = alpha_level, effect_size_threshold = effect_size_threshold)
+    
+  } else if(test == "chi-square") {
+    
     df <- items %>%
       pivot_longer(cols = names(items)) %>%
       #group_by(name) %>%
@@ -193,7 +300,9 @@ render_barplot <- function(
           levels = names(items)
         )
       )
+    
   } else if(test == "lm") {
+    
     names(grouping_variable) <- "grouping_variable"
     
     df <- bind_cols(items, grouping_variable) %>%
@@ -208,9 +317,11 @@ render_barplot <- function(
           levels = names(items)
         )
       )
+    
   }
 
   if(is.character(options$item_options)) {
+    
     df <- df %>%
       mutate(
         level = factor(
@@ -219,9 +330,21 @@ render_barplot <- function(
           labels = options$item_options
         )
       )
+    
+  }
+  
+  if(test == "anova") {
+    
+    df <- df %>% 
+      mutate(
+        level = paste0(level, " (", letter, ")"),
+        item = level
+      )
+    
   }
   
   if(is.vector(options$grouping_variable_options)) {
+    
     df <- df %>%
       mutate(
         level = factor(
@@ -230,6 +353,7 @@ render_barplot <- function(
           labels = options$grouping_variable_options
         )
       )
+    
   }
   
   # Tweak plot based on number of items passed into function
@@ -332,7 +456,7 @@ render_barplot <- function(
       limits = c(
         0, 
         ifelse(
-          test = test == "lm",
+          test = test %in% c("anova", "lm"),
           yes = max(df$mean) + max(df$sd),
           no = min(100, max(df$mean + 10))
         )
@@ -346,15 +470,22 @@ render_barplot <- function(
         condition = "*" %in% df$stat_sig,
         true = paste0(
           "&#42; <i>p</i> &le; ", 
+          format(round(alpha_level, 2), nsmall = 2),
           if_else(
             condition = test == "lm",
             true = paste0(" and Cohen's <i>d</i> &#8805; ", effect_size_threshold),
             false = ""
           ),
-          format(round(alpha_level, 2), nsmall = 2), 
           options$caption_title
         ),
-        false = ""
+        false = if_else(
+          condition = sum(df$stat_sig == "") < nrow(df),
+          true = paste0(
+            "Letters denote Tukey's Honest Significant Difference tests where <i>p</i> &le; ",
+            format(round(alpha_level, 2), nsmall = 2)
+          ),
+          false = ""
+        )
       )
     ) +
     theme_minimal() +
@@ -421,18 +552,18 @@ df <- tibble(
   ),
   `Continuous 1` = rnorm(
     n = 1000,
-    mean = 7.1,
-    sd = 1.5
+    mean = 12.5,
+    sd = 3.2
   ) %>% floor,
   `Continuous 2` = rnorm(
     n = 1000,
-    mean = 5.5,
-    sd = 1.2
+    mean = 25.2,
+    sd = 4.1
   ) %>% floor,
   `Continuous 3` = rnorm(
     n = 1000,
-    mean = 6,
-    sd = 1.9
+    mean = 55.5,
+    sd = 10.6
   ) %>% floor
 )
 ```
@@ -551,7 +682,51 @@ render_barplot(
   data_label_position = 1,
   decimals = 1,
   test = "lm", 
-  alpha_level = 0.05
+  alpha_level = 0.05,
+  effect_size_threshold = 0.05
+)
+```
+
+### Bar plot (multiple items)
+
+```{r, `code-line-numbers` = 1}
+render_barplot(
+  items = df %>% 
+    select(
+      `Continuous 1`, 
+      `Continuous 2`, 
+      `Continuous 3`
+    ),
+  item_options = c(
+    "Continuous 1" = "100m sprint",
+    "Continuous 2" = "200m sprint",
+    "Continuous 3" = "400m sprint"
+  ),
+  plot_width = NULL,
+  plot_height = NULL,
+  plot_font_face = "Arial",
+  plot_title = "",
+  plot_title_font_size = 10,
+  legend_position = "none",
+  legend_font_size = 10,
+  bar_transparency = 1,
+  show_grid_lines = FALSE,
+  show_axis_lines = TRUE,
+  show_x_axis = TRUE,
+  show_y_axis = FALSE,
+  x_axis_label = "",
+  y_axis_label = "Mean (seconds)",
+  y_axis_breaks = 20,
+  axis_text_font_size = 10,
+  label_font_size = 2.5,
+  label_wrap_size = 20,
+  label_color = "#434343",
+  error_bar_size = 0.05,
+  data_label_position = 1,
+  decimals = 1,
+  test = "anova", 
+  alpha_level = 0.05,
+  effect_size_threshold = 0.1
 )
 ```
 
