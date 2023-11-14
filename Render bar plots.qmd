@@ -77,7 +77,7 @@ render_barplot <- function(
   if(is.vector(options$grouping_variable %>% unlist)) grouping_variable <- options$grouping_variable
   if(is.numeric(data_label_position)) data_label_position <- data_label_position * -1
   
-  get_anova <- function(x, alpha_level = 0.05, effect_size_threshold = 0.1) {
+  get_anova <- function(x, alpha_level = 0.05) {
       
     # Reshape data
     x <- x %>%
@@ -284,7 +284,7 @@ render_barplot <- function(
   # Execute user-defined test
   if(test == "anova") {
     
-    df <- get_anova(x = items, alpha_level = alpha_level, effect_size_threshold = effect_size_threshold)
+    df <- get_anova(x = items, alpha_level = alpha_level)
     
   } else if(test == "chi-square") {
     
@@ -553,17 +553,17 @@ df <- tibble(
   `Continuous 1` = rnorm(
     n = 1000,
     mean = 12.5,
-    sd = 3.2
+    sd = 5.2
   ) %>% floor,
   `Continuous 2` = rnorm(
     n = 1000,
     mean = 25.2,
-    sd = 4.1
+    sd = 9.1
   ) %>% floor,
   `Continuous 3` = rnorm(
     n = 1000,
     mean = 55.5,
-    sd = 10.6
+    sd = 23.6
   ) %>% floor
 )
 ```
