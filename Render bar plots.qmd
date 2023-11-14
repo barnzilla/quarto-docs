@@ -78,10 +78,19 @@ render_barplot <- function(
   if(is.numeric(data_label_position)) data_label_position <- data_label_position * -1
   
   get_anova <- function(x, alpha_level = 0.05) {
+    
+    vector_order <- names(x)
       
     # Reshape data
     x <- x %>%
-      pivot_longer(cols = names(.))
+      pivot_longer(cols = names(.)) %>%
+      mutate(
+        name = factor(
+          x = name,
+          levels = vector_order
+        )
+      ) %>%
+      arrange(name)
     
     # Create empty tibble
     df <- tibble()
@@ -96,6 +105,7 @@ render_barplot <- function(
       df <- bind_rows(
         df,
         tibble(
+            item = level,
             level = level,
             mean = round(model$coefficients %>% as.vector, decimals),
             sd = sd(x$value[x$name == level]),
@@ -110,6 +120,14 @@ render_barplot <- function(
         relocate(letter, .after = level)
       
     }
+    
+    df <- df %>%
+      mutate(
+        item = factor(
+          x = item,
+          levels = vector_order
+        )
+      )
     
     # Fit model
     model <- lm(value ~ name, data = x)
@@ -329,16 +347,6 @@ render_barplot <- function(
           levels = names(options$item_options),
           labels = options$item_options
         )
-      )
-    
-  }
-  
-  if(test == "anova") {
-    
-    df <- df %>% 
-      mutate(
-        level = paste0(level, " (", letter, ")"),
-        item = level
       )
     
   }
@@ -693,14 +701,14 @@ render_barplot(
 render_barplot(
   items = df %>% 
     select(
+      `Continuous 3`, 
       `Continuous 1`, 
-      `Continuous 2`, 
-      `Continuous 3`
+      `Continuous 2`
     ),
-  item_options = c(
+  item_labels = c(
+    "Continuous 3" = "400m sprint",
     "Continuous 1" = "100m sprint",
-    "Continuous 2" = "200m sprint",
-    "Continuous 3" = "400m sprint"
+    "Continuous 2" = "200m sprint"
   ),
   plot_width = NULL,
   plot_height = NULL,
