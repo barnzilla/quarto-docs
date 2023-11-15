@@ -77,10 +77,11 @@ render_barplot <- function(
   if(is.vector(options$grouping_variable %>% unlist)) grouping_variable <- options$grouping_variable
   if(is.numeric(data_label_position)) data_label_position <- data_label_position * -1
   
-  get_anova <- function(x, alpha_level = 0.05) {
-    
+  get_anova <- function(x, alpha_level = 0.05, effect_size_threshold = 0.1) {
+
+    # Get vector order for when factoring
     vector_order <- names(x)
-      
+    
     # Reshape data
     x <- x %>%
       pivot_longer(cols = names(.)) %>%
@@ -172,27 +173,50 @@ render_barplot <- function(
       # Check if stat sig
       if(anova$`p adj`[row] <= alpha_level) {
         
-        df$stat_sig[df$level == post_hoc_tests$variable1[i]] <- paste0(
-          c(
-            strsplit(df$stat_sig[df$level == post_hoc_tests$variable1[i]], ",")[[1]],
-            df$letter[df$level == post_hoc_tests$variable2[i]]
-          ), 
-          collapse = ","
-        )
+        # Compute effect size
+        effect_size <- cohens_d(
+          value ~ name,
+          data = x %>% 
+            filter(
+              name %in% c(
+                post_hoc_tests$variable1[i], 
+                post_hoc_tests$variable2[i]
+              )
+            )
+        )$Cohens_d %>% 
+          abs
         
-        df$stat_sig[df$level == post_hoc_tests$variable2[i]] <- paste0(
-          c(
-            strsplit(df$stat_sig[df$level == post_hoc_tests$variable2[i]], ",")[[1]],
-            df$letter[df$level == post_hoc_tests$variable1[i]]
-          ), 
-          collapse = ","
-        )
+        if(effect_size >= effect_size_threshold) {
+          
+          df$stat_sig[df$level == post_hoc_tests$variable1[i]] <- paste0(
+            c(
+              strsplit(df$stat_sig[df$level == post_hoc_tests$variable1[i]], ",")[[1]],
+              df$letter[df$level == post_hoc_tests$variable2[i]]
+            ), 
+            collapse = ","
+          )
+          
+          df$stat_sig[df$level == post_hoc_tests$variable2[i]] <- paste0(
+            c(
+              strsplit(df$stat_sig[df$level == post_hoc_tests$variable2[i]], ",")[[1]],
+              df$letter[df$level == post_hoc_tests$variable1[i]]
+            ), 
+            collapse = ","
+          )
+          
+        }
         
       }
       
     }
     
-    df <- df %>% mutate(stat_sig = paste0(" ", stat_sig), level = item)
+    # Find rows that are stat sig
+    rows <- which(df$stat_sig != "")
+    
+    # Add a space
+    if(length(rows)) df$stat_sig[rows] <- paste0(" ", df$stat_sig[rows])
+    
+    df <- df %>% mutate(level = item)
     
     return(df)
     
@@ -305,7 +329,7 @@ render_barplot <- function(
   # Execute user-defined test
   if(test == "anova") {
     
-    df <- get_anova(x = items, alpha_level = alpha_level)
+    df <- get_anova(x = items, alpha_level = alpha_level, effect_size_threshold = effect_size_threshold)
     
   } else if(test == "chi-square") {
     
@@ -773,7 +797,7 @@ render_barplot(
   decimals = 1,
   test = "anova", 
   alpha_level = 0.05,
-  effect_size_threshold = 0.1
+  effect_size_threshold = 10
 )
 ```
 
