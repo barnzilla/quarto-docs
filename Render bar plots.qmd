@@ -124,10 +124,11 @@ render_barplot <- function(
     df <- df %>%
       mutate(
         item = factor(
-          x = item,
-          levels = vector_order
+          x = paste0(item, " (", letter, ")"),
+          levels = paste0(vector_order, " (", letter, ")")
         )
-      )
+      ) %>%
+      arrange(item)
     
     # Fit model
     model <- lm(value ~ name, data = x)
@@ -191,7 +192,7 @@ render_barplot <- function(
       
     }
     
-    df <- df %>% mutate(stat_sig = paste0(" ", stat_sig))
+    df <- df %>% mutate(stat_sig = paste0(" ", stat_sig), level = item)
     
     return(df)
     
@@ -298,6 +299,8 @@ render_barplot <- function(
     string = names(items),
     width = label_wrap_size
   )
+  
+  dplyr_version <- packageVersion("dplyr") %>% unlist %>% paste0(., collapse = "") %>% as.integer
 
   # Execute user-defined test
   if(test == "anova") {
@@ -307,50 +310,86 @@ render_barplot <- function(
   } else if(test == "chi-square") {
     
     df <- items %>%
-      pivot_longer(cols = names(items)) %>%
-      #group_by(name) %>%
-      #dplyr::summarize(get_props(value, unique(name), alpha_level = alpha_level), .groups = "keep") %>%
-      #ungroup() %>%
-      reframe(get_props(value, unique(name), alpha_level = alpha_level), .by = name) %>%
-      mutate(
-        item = factor(
-          x = item,
-          levels = names(items)
+      pivot_longer(cols = names(items))
+    
+    if(dplyr_version < 110) {
+      
+      df <- df %>%
+        group_by(name) %>%
+        dplyr::summarize(get_props(value, unique(name), alpha_level = alpha_level), .groups = "keep") %>%
+        ungroup() %>%
+        mutate(
+          item = factor(
+            x = item,
+            levels = names(items)
+          )
         )
-      )
+      
+    } else {
+      
+      df <- df %>%
+        reframe(get_props(value, unique(name), alpha_level = alpha_level), .by = name) %>%
+        mutate(
+          item = factor(
+            x = item,
+            levels = names(items)
+          )
+        )
+      
+    }
     
   } else if(test == "lm") {
     
     names(grouping_variable) <- "grouping_variable"
     
     df <- bind_cols(items, grouping_variable) %>%
-      pivot_longer(cols = names(items)) %>%
-      #group_by(name) %>%
-      #dplyr::summarize(get_means(value, grouping_variable, alpha_level = alpha_level), .groups = "keep") %>%
-      #ungroup() %>%
-      reframe(get_means(value, unique(name), grouping_variable, alpha_level = alpha_level, effect_size_threshold = effect_size_threshold), .by = name) %>%
-      mutate(
-        item = factor(
-          x = item,
-          levels = names(items)
+      pivot_longer(cols = names(items))
+    
+    if(dplyr_version < 110) {
+      
+      df <- df %>%
+        group_by(name) %>%
+        dplyr::summarize(
+          get_means(
+            value, 
+            unique(name), 
+            grouping_variable, 
+            alpha_level = alpha_level, 
+            effect_size_threshold = effect_size_threshold
+          ), 
+          .groups = "keep"
+        ) %>%
+        ungroup() %>%
+        mutate(
+          item = factor(
+            x = item,
+            levels = names(items)
+          )
         )
-      )
+      
+    } else {
+      
+      df <- df %>%
+        reframe(
+          get_means(
+            value, 
+            unique(name), 
+            grouping_variable, 
+            alpha_level = alpha_level, 
+            effect_size_threshold = effect_size_threshold), 
+          .by = name
+        ) %>%
+        mutate(
+          item = factor(
+            x = item,
+            levels = names(items)
+          )
+        )
+      
+    }
     
   }
 
-  if(is.character(options$item_options)) {
-    
-    df <- df %>%
-      mutate(
-        level = factor(
-          x = level,
-          levels = names(options$item_options),
-          labels = options$item_options
-        )
-      )
-    
-  }
-  
   if(is.vector(options$grouping_variable_options)) {
     
     df <- df %>%
