@@ -413,6 +413,17 @@ render_barplot <- function(
     }
     
   }
+  
+  if(is.character(options$item_options)) {
+    df <- df %>%
+      mutate(
+        level = factor(
+          x = level,
+          levels = names(options$item_options),
+          labels = options$item_options
+        )
+      )
+  }
 
   if(is.vector(options$grouping_variable_options)) {
     
