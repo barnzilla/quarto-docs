@@ -415,14 +415,25 @@ render_barplot <- function(
   }
   
   if(is.character(options$item_options)) {
-    df <- df %>%
-      mutate(
-        level = factor(
-          x = level,
-          levels = names(options$item_options),
-          labels = options$item_options
+    if(length(unique(df$name)) > 1) {
+      df <- df %>%
+        mutate(
+          level = factor(
+            x = level,
+            levels = names(options$item_options),
+            labels = options$item_options
+          )
         )
-      )
+    } else {
+      df <- df %>%
+        mutate(
+          level = factor(
+            x = level,
+            levels = options$item_options,
+            labels = options$item_options
+          )
+        )
+    }
   }
 
   if(is.vector(options$grouping_variable_options)) {
@@ -658,6 +669,7 @@ df <- tibble(
 render_barplot(
   items = df %>% 
     select(`How are you doing today?`),
+  item_options = c("Disagree", "Agree", "Neutral"),
   plot_width = NULL,
   plot_height = NULL,
   plot_font_face = "Arial",
