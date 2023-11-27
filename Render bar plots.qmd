@@ -62,6 +62,7 @@ render_barplot <- function(
   test = c("anova", "chi-square", "lm")[3], 
   alpha_level = 0.05,
   effect_size_threshold = 0.1,
+  show_n = FALSE,
   ...
 ) {
   
@@ -495,7 +496,19 @@ render_barplot <- function(
           true = "%",
           false = ""
         ), 
-        stat_sig
+        stat_sig,
+        ifelse(
+          test = isTRUE(show_n),
+          yes = paste0(
+            "\n(",
+            format(
+              x = n,
+              big.mark = ","
+            ),
+            ")"
+          ),
+          no = paste0("")
+        )
       )
     )
       
@@ -525,7 +538,19 @@ render_barplot <- function(
           true = "%",
           false = ""
         ), 
-        stat_sig
+        stat_sig,
+        ifelse(
+          test = isTRUE(show_n),
+          yes = paste0(
+            "\n(",
+            format(
+              x = n,
+              big.mark = ","
+            ),
+            ")"
+          ),
+          no = paste0("")
+        )
       )
     )
     
@@ -718,10 +743,11 @@ render_barplot(
   label_color = "#434343",
   item_option_wrap_size = 3,
   error_bar_size = 0.05,
-  data_label_position = 2.5,
+  data_label_position = 1,
   decimals = 1,
   test = "chi-square", 
-  alpha_level = 0.05
+  alpha_level = 0.05,
+  show_n = TRUE
 )
 ```
 
