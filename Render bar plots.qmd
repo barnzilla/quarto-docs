@@ -55,6 +55,7 @@ render_barplot <- function(
   label_font_size = 2.5,
   label_wrap_size = 20,
   label_color = "#434343",
+  item_option_wrap_size = 18,
   error_bar_size = 0.05,
   data_label_position = 2.5,
   decimals = 1,
@@ -449,6 +450,18 @@ render_barplot <- function(
     
   }
   
+  # Wrap vector names if too long
+  df <- df %>%
+    mutate(
+      across(
+        .cols = c("item", "level"),
+        .fns = ~ str_wrap(
+          string = .x,
+          width = item_option_wrap_size
+        )
+      )
+    )
+  
   # Tweak plot based on number of items passed into function
   if(ncol(items) > 1) {
 
@@ -694,6 +707,7 @@ render_barplot(
   label_font_size = 2.5,
   label_wrap_size = 20,
   label_color = "#434343",
+  item_option_wrap_size = 3,
   error_bar_size = 0.05,
   data_label_position = 2.5,
   decimals = 1,
@@ -819,6 +833,7 @@ render_barplot(
   label_font_size = 2.5,
   label_wrap_size = 20,
   label_color = "#434343",
+  item_option_wrap_size = 5,
   error_bar_size = 0.05,
   data_label_position = 1,
   decimals = 1,
@@ -864,6 +879,7 @@ plot1 <- render_barplot(
   label_font_size = 2.5,
   label_wrap_size = 20,
   label_color = "#434343",
+  item_option_wrap_size = 20,
   error_bar_size = 0.05,
   data_label_position = 1,
   decimals = 1,
