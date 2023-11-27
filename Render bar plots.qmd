@@ -415,6 +415,9 @@ render_barplot <- function(
     
   }
   
+  # Coerce any ci_lower values below zero to zero
+  df$ci_lower <- pmax(0, df$ci_lower)
+  
   if(is.character(options$item_options)) {
     if(length(unique(df$name)) > 1) {
       df <- df %>%
@@ -674,7 +677,13 @@ df <- tibble(
     n = 1000,
     mean = 55.5,
     sd = 23.6
-  ) %>% floor
+  ) %>% floor,
+  `Unbalanced distribution` = sample(
+    x = paste0("Option ", 1:6),
+    size = 1000,
+    replace = TRUE,
+    prob = c(0.03, .25, 0.15, 0.30, 0.20, 0.07)
+  )
 )
 ```
 
