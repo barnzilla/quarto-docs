@@ -514,7 +514,11 @@ render_barplot <- function(
     )
     
     # Set plot title
-    plot_title <- gsub("\n", " ", df$item[1])
+    plot_title <- if_else(
+      condition = ! is.na(options$plot_title) & options$plot_title != "",
+      true = gsub("\n", " ", df$item[1]),
+      false = ""
+    )
     
   }
   
