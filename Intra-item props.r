@@ -1,6 +1,5 @@
 # Import dependencies
 library(dplyr)
-library(interpretCI)
 library(stringr)
 
 # Add user-defined functions to the Global Environment
