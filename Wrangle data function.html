@@ -2867,7 +2867,7 @@ border: 0;
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Feb 6, 2024 @ 13:10:40</p>
+      <p class="date">Feb 6, 2024 @ 13:46:22</p>
     </div>
   </div>
   
@@ -2893,7 +2893,7 @@ border: 0;
 <span id="cb2-3"><a href="#cb2-3"></a>  <span class="co"># Get counts and props</span></span>
 <span id="cb2-4"><a href="#cb2-4"></a>  tab <span class="ot">&lt;-</span> x <span class="sc">%&gt;%</span></span>
 <span id="cb2-5"><a href="#cb2-5"></a>    <span class="fu">group_by</span>({{outcome_variable}}, {{grouping_variable}}) <span class="sc">%&gt;%</span></span>
-<span id="cb2-6"><a href="#cb2-6"></a>    <span class="fu">summarise</span>(<span class="at">count =</span> <span class="fu">n</span>(), <span class="at">.groups =</span> <span class="st">&quot;keep&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-6"><a href="#cb2-6"></a>    <span class="fu">summarise</span>(<span class="at">count =</span> <span class="fu">n</span>()) <span class="sc">%&gt;%</span></span>
 <span id="cb2-7"><a href="#cb2-7"></a>    <span class="fu">mutate</span>(<span class="at">prop =</span> count <span class="sc">/</span> <span class="fu">sum</span>(count)) <span class="sc">%&gt;%</span></span>
 <span id="cb2-8"><a href="#cb2-8"></a>    ungroup <span class="sc">%&gt;%</span></span>
 <span id="cb2-9"><a href="#cb2-9"></a>    <span class="fu">arrange</span>({{grouping_variable}}, {{outcome_variable}})</span>
@@ -2970,28 +2970,28 @@ border: 0;
 <tbody>
   <tr>
    <td style="text-align:left;"> Strongly agree </td>
-   <td style="text-align:right;"> 100 </td>
-   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 103 </td>
+   <td style="text-align:right;"> 0.103 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Agree </td>
-   <td style="text-align:right;"> 106 </td>
-   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 86 </td>
+   <td style="text-align:right;"> 0.086 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Neutral </td>
-   <td style="text-align:right;"> 484 </td>
-   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 502 </td>
+   <td style="text-align:right;"> 0.502 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Disagree </td>
-   <td style="text-align:right;"> 108 </td>
-   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 97 </td>
+   <td style="text-align:right;"> 0.097 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Strongly disagree </td>
-   <td style="text-align:right;"> 202 </td>
-   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 212 </td>
+   <td style="text-align:right;"> 0.212 </td>
   </tr>
 </tbody>
 </table>
@@ -3027,62 +3027,62 @@ border: 0;
   <tr>
    <td style="text-align:left;"> Strongly agree </td>
    <td style="text-align:left;"> Group 1 </td>
-   <td style="text-align:right;"> 34 </td>
-   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 29 </td>
+   <td style="text-align:right;"> 0.2815534 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Agree </td>
    <td style="text-align:left;"> Group 1 </td>
-   <td style="text-align:right;"> 31 </td>
-   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 24 </td>
+   <td style="text-align:right;"> 0.2790698 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Neutral </td>
    <td style="text-align:left;"> Group 1 </td>
    <td style="text-align:right;"> 147 </td>
-   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 0.2928287 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Disagree </td>
    <td style="text-align:left;"> Group 1 </td>
-   <td style="text-align:right;"> 43 </td>
-   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 33 </td>
+   <td style="text-align:right;"> 0.3402062 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Strongly disagree </td>
    <td style="text-align:left;"> Group 1 </td>
-   <td style="text-align:right;"> 58 </td>
-   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 71 </td>
+   <td style="text-align:right;"> 0.3349057 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Strongly agree </td>
    <td style="text-align:left;"> Group 2 </td>
-   <td style="text-align:right;"> 66 </td>
-   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 74 </td>
+   <td style="text-align:right;"> 0.7184466 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Agree </td>
    <td style="text-align:left;"> Group 2 </td>
-   <td style="text-align:right;"> 75 </td>
-   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 62 </td>
+   <td style="text-align:right;"> 0.7209302 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Neutral </td>
    <td style="text-align:left;"> Group 2 </td>
-   <td style="text-align:right;"> 337 </td>
-   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 355 </td>
+   <td style="text-align:right;"> 0.7071713 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Disagree </td>
    <td style="text-align:left;"> Group 2 </td>
-   <td style="text-align:right;"> 65 </td>
-   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 64 </td>
+   <td style="text-align:right;"> 0.6597938 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Strongly disagree </td>
    <td style="text-align:left;"> Group 2 </td>
-   <td style="text-align:right;"> 144 </td>
-   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 141 </td>
+   <td style="text-align:right;"> 0.6650943 </td>
   </tr>
 </tbody>
 </table>

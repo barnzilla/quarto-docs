@@ -31,7 +31,7 @@ wrangle_data <- function(x, outcome_variable, grouping_variable) {
   # Get counts and props
   tab <- x %>%
     group_by({{outcome_variable}}, {{grouping_variable}}) %>%
-    summarise(count = n(), .groups = "keep") %>%
+    summarise(count = n()) %>%
     mutate(prop = count / sum(count)) %>%
     ungroup %>%
     arrange({{grouping_variable}}, {{outcome_variable}})
