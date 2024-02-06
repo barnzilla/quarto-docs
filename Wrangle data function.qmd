@@ -1,0 +1,113 @@
+---
+title: "Wrangle data function"
+author: "Joel Barnes"
+date: "`r Sys.time()`"
+date-format: "MMM D, YYYY @ HH:mm:ss"
+format: 
+  html:
+    page-layout: full
+    toc: true
+    toc-location: left
+    embed-resources: true
+editor: source
+execute:
+  warning: false
+  message: false
+---
+
+## Dependencies
+
+```{r, `code-line-numbers` = 1}
+# Import dependencies
+library(dplyr)
+library(kableExtra)
+```
+
+## User-defined functions
+
+```{r, `code-line-numbers` = 1}
+wrangle_data <- function(x, outcome_variable, grouping_variable) {
+  
+  # Get counts and props
+  tab <- x %>%
+    group_by({{outcome_variable}}, {{grouping_variable}}) %>%
+    summarise(count = n(), .groups = "keep") %>%
+    mutate(prop = count / sum(count)) %>%
+    ungroup %>%
+    arrange({{grouping_variable}}, {{outcome_variable}})
+  
+  return(tab)
+  
+}
+```
+
+## Fake data
+
+```{r, `code-line-numbers` = 1}
+# Create fake data
+df <- tibble(
+  sentiment = sample(
+    x = c(
+      "Strongly disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly agree"
+    ),
+    size = 1000,
+    replace = TRUE,
+    prob = c(0.2, 0.1, 0.5, 0.1, 0.1)
+  ) %>%
+    factor(
+      x = .,
+      levels = c(
+        "Strongly agree",
+        "Agree",
+        "Neutral",
+        "Disagree",
+        "Strongly disagree"
+      )
+    ),
+  group = sample(
+    x = c(
+      "Group 1",
+      "Group 2"
+    ),
+    size = 1000,
+    replace = TRUE,
+    prob = c(0.3, 0.7)
+  ) %>%
+    factor
+)
+```
+
+## Counts and props
+
+### Without grouping variable
+
+```{r, `code-line-numbers` = 1}
+# Get counts and frequencies
+tab <- wrangle_data(
+  x = df,
+  outcome_variable = sentiment
+)
+
+# Render table
+kbl(tab) %>%
+  kable_styling(bootstrap_options = c("hover", "striped"))
+```
+
+### With grouping variable
+
+```{r, `code-line-numbers` = 1}
+# Get counts and frequencies
+tab <- wrangle_data(
+  x = df,
+  outcome_variable = sentiment,
+  grouping_variable = group
+)
+
+# Render table
+kbl(tab) %>%
+  kable_styling(bootstrap_options = c("hover", "striped"))
+```
