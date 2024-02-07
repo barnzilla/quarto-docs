@@ -21,6 +21,7 @@ execute:
 # Import dependencies
 library(dplyr)
 library(kableExtra)
+library(srvyr)
 ```
 
 ## User-defined functions
@@ -28,13 +29,68 @@ library(kableExtra)
 ```{r, `code-line-numbers` = 1}
 wrangle_data <- function(x, outcome_variable, grouping_variable) {
   
-  # Get counts and props
-  tab <- x %>%
-    group_by({{outcome_variable}}, {{grouping_variable}}) %>%
-    summarise(count = n()) %>%
-    mutate(prop = count / sum(count)) %>%
-    ungroup %>%
-    arrange({{grouping_variable}}, {{outcome_variable}})
+  wrangle_data_internal <- function(x, outcome_variable, grouping_variable) {
+    
+    if(x %>% select({{outcome_variable}}) %>% unlist %>% class %in% c("factor")) {
+      
+      # Get counts, props and CIs
+      tab <- x %>%
+        group_by(.dots =  intersect(names(.), c(outcome_variable, grouping_variable))) %>%
+        summarise(count = n(), .groups = "keep") %>%
+        ungroup %>%
+        group_by(.dots =  intersect(names(.), grouping_variable)) %>%
+        mutate(
+          prop = count / sum(count),
+          ci_lower = (prop - qnorm(1 - 0.05 / 2) * sqrt(prop *(1 - prop) / sum(count))) * 100,
+          ci_upper = (prop + qnorm(1 - 0.05 / 2) * sqrt(prop *(1 - prop) / sum(count))) * 100,
+          prop = prop * 100
+        ) %>%
+        ungroup %>%
+        mutate(variable = x %>% select(all_of(outcome_variable)) %>% names) %>%
+        rename(scale = all_of(outcome_variable)) %>%
+        relocate(variable, .before = scale)
+      
+      return(tab)
+      
+    } else {
+      
+      # Get means and CIs
+      tab <- x %>%
+        group_by(.dots =  intersect(names(.), grouping_variable)) %>%
+        summarise(
+          n = n(),
+          mean = mean(.data[[outcome_variable]], na.rm = TRUE),
+          sd = sd(.data[[outcome_variable]], na.rm = TRUE),
+          ci_lower = mean - qt(0.975, df = n - 1) * sd / sqrt(n),
+          ci_upper = mean + qt(0.975, df = n - 1) * sd / sqrt(n)
+        ) %>%
+        ungroup %>%
+        mutate(variable = x %>% select(all_of(outcome_variable)) %>% names) %>%
+        relocate(variable)
+      
+      return(tab)
+      
+    }
+    
+  }
+  
+  # Get outcome variable(s)
+  outcome_variables <- x %>% 
+    select({{outcome_variable}}) %>%
+    names
+  
+  # Get grouping variable(s)
+  grouping_variables <- x %>% 
+    select({{grouping_variable}}) %>%
+    names
+  
+  # Iterate outcome variable(s) and apply wrangle_data_internal()
+  tab <- bind_rows(
+    lapply(
+      X = outcome_variables,
+      FUN = function(y) wrangle_data_internal(x, y, grouping_variables)
+    )
+  )
   
   return(tab)
   
@@ -46,7 +102,7 @@ wrangle_data <- function(x, outcome_variable, grouping_variable) {
 ```{r, `code-line-numbers` = 1}
 # Create fake data
 df <- tibble(
-  sentiment = sample(
+  factor1 = sample(
     x = c(
       "Strongly disagree",
       "Disagree",
@@ -68,6 +124,40 @@ df <- tibble(
         "Strongly disagree"
       )
     ),
+  factor2 = sample(
+    x = c(
+      "Strongly disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly agree"
+    ),
+    size = 1000,
+    replace = TRUE,
+    prob = c(0.4, 0.3, 0.1, 0.1, 0.1)
+  ) %>%
+    factor(
+      x = .,
+      levels = c(
+        "Strongly agree",
+        "Agree",
+        "Neutral",
+        "Disagree",
+        "Strongly disagree"
+      )
+    ),
+  numeric1 = sample(
+    x = 1:5,
+    size = 1000,
+    replace = TRUE,
+    prob = c(0.4, 0.3, 0.1, 0.1, 0.1)
+  ),
+  numeric2 = sample(
+    x = 3:7,
+    size = 1000,
+    replace = TRUE,
+    prob = c(0.4, 0.3, 0.1, 0.1, 0.1)
+  ),
   group = sample(
     x = c(
       "Group 1",
@@ -81,15 +171,15 @@ df <- tibble(
 )
 ```
 
-## Counts and props
+## Counts, props and CIs
 
-### Without grouping variable
+### Single variable without grouping variable
 
 ```{r, `code-line-numbers` = 1}
 # Get counts and frequencies
 tab <- wrangle_data(
   x = df,
-  outcome_variable = sentiment
+  outcome_variable = factor1
 )
 
 # Render table
@@ -97,13 +187,102 @@ kbl(tab) %>%
   kable_styling(bootstrap_options = c("hover", "striped"))
 ```
 
-### With grouping variable
+### Single variable with grouping variable
 
 ```{r, `code-line-numbers` = 1}
 # Get counts and frequencies
 tab <- wrangle_data(
   x = df,
-  outcome_variable = sentiment,
+  outcome_variable = factor1,
+  grouping_variable = group
+)
+
+# Render table
+kbl(tab) %>%
+  kable_styling(bootstrap_options = c("hover", "striped"))
+```
+
+### Multiple variables without grouping variable
+
+```{r, `code-line-numbers` = 1}
+# Get counts and frequencies
+tab <- wrangle_data(
+  x = df,
+  outcome_variable = c(factor1, factor2)
+)
+
+# Render table
+kbl(tab) %>%
+  kable_styling(bootstrap_options = c("hover", "striped"))
+```
+
+### Multiple variables with grouping variable
+
+```{r, `code-line-numbers` = 1}
+# Get counts and frequencies
+tab <- wrangle_data(
+  x = df,
+  outcome_variable = c(factor1, factor2),
+  grouping_variable = group
+)
+
+# Render table
+kbl(tab) %>%
+  kable_styling(bootstrap_options = c("hover", "striped"))
+```
+
+## Means, SDs and CIs
+
+### Single variable without grouping variable
+
+```{r, `code-line-numbers` = 1}
+# Get counts and frequencies
+tab <- wrangle_data(
+  x = df,
+  outcome_variable = numeric1
+)
+
+# Render table
+kbl(tab) %>%
+  kable_styling(bootstrap_options = c("hover", "striped"))
+```
+
+### Single variable with grouping variable
+
+```{r, `code-line-numbers` = 1}
+# Get counts and frequencies
+tab <- wrangle_data(
+  x = df,
+  outcome_variable = numeric1,
+  grouping_variable = group
+)
+
+# Render table
+kbl(tab) %>%
+  kable_styling(bootstrap_options = c("hover", "striped"))
+```
+
+### Multiple variables without grouping variable
+
+```{r, `code-line-numbers` = 1}
+# Get counts and frequencies
+tab <- wrangle_data(
+  x = df,
+  outcome_variable = c(numeric1, numeric2)
+)
+
+# Render table
+kbl(tab) %>%
+  kable_styling(bootstrap_options = c("hover", "striped"))
+```
+
+### Multiple variables with grouping variable
+
+```{r, `code-line-numbers` = 1}
+# Get counts and frequencies
+tab <- wrangle_data(
+  x = df,
+  outcome_variable = c(numeric1, numeric2),
   grouping_variable = group
 )
 
